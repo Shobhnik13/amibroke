@@ -1,0 +1,14 @@
+{
+  "name": "amibroke",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "bun run --cwd apps/api dev",
+    "db:generate": "bun run --cwd packages/db generate",
+    "db:migrate": "bun run --cwd packages/db migrate",
+    "db:studio": "bun run --cwd packages/db studio"
+  },
+  "dependencies": {
+    "@types/node": "^25.9.1"
+  }
+}
