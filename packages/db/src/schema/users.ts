@@ -8,6 +8,8 @@ export const users = pgTable('users', {
   avatarUrl: text('avatar_url'),
   email: text('email'),
   isPublic: boolean('is_public').default(true).notNull(),
+  apiKeyHash: text('api_key_hash').unique(),
+  apiKeyPrefix: text('api_key_prefix'),
   daemonStatus: daemonStatusEnum('daemon_status'),
   lastSyncAt: timestamp('last_sync_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

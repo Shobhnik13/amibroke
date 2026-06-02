@@ -37,6 +37,18 @@ export async function upsertUserByGithub(data: {
   return user;
 }
 
+export async function findUserByApiKeyHash(hash: string): Promise<User | null> {
+  const db = getDb();
+  const [user] = await db.select().from(users).where(eq(users.apiKeyHash, hash)).limit(1);
+  return user ?? null;
+}
+
+export async function saveApiKey(userId: string, hash: string, prefix: string): Promise<void> {
+  const db = getDb();
+  await db.update(users).set({ apiKeyHash: hash, apiKeyPrefix: prefix, updatedAt: new Date() }).where(eq(users.id, userId));
+}
+
+
 export async function updateDaemonStatus(
   userId: string,
   status: 'active' | 'stopped' | 'uninstalled',

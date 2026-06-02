@@ -2,12 +2,11 @@ import {
   getGitHubOAuthUrl,
   exchangeCodeForToken,
   getGitHubUser,
-  initiateDeviceFlow,
-  pollDeviceFlow,
 } from '../lib/github';
 import type { GitHubUser } from '../lib/github';
 import { signToken } from '../lib/jwt';
-import { upsertUserByGithub, findUserById } from '../repositories/user.repository';
+import { upsertUserByGithub, findUserById, saveApiKey, findUserByApiKeyHash } from '../repositories/user.repository';
+import { generateRawKey, hashKey, extractPrefix } from '../lib/api-key';
 import { sumCostByUserId } from '../repositories/usage-record.repository';
 import { getLastSync } from '../repositories/sync-log.repository';
 
@@ -23,26 +22,15 @@ export async function completeWebAuth(code: string): Promise<{ token: string }> 
   return { token };
 }
 
-export async function initiateDevice() {
-  return initiateDeviceFlow();
+export async function generateApiKey(userId: string): Promise<{ key: string; prefix: string }> {
+  const key = generateRawKey();
+  await saveApiKey(userId, hashKey(key), extractPrefix(key));
+  return { key, prefix: extractPrefix(key) };
 }
 
-export type DevicePollResult =
-  | { status: 'authorization_pending' | 'slow_down' | 'expired_token' | 'access_denied' | string }
-  | { status: 'complete'; token: string };
 
-export async function pollDevice(deviceCode: string): Promise<DevicePollResult> {
-  const result = await pollDeviceFlow(deviceCode);
-
-  if (!result.access_token) {
-    return { status: result.error ?? 'authorization_pending' };
-  }
-
-  const ghUser = await getGitHubUser(result.access_token);
-  const user = await upsertGitHubUser(ghUser);
-  const token = signToken({ sub: user.id, username: user.username });
-
-  return { status: 'complete', token };
+export async function getUserByApiKeyHash(rawKey: string) {
+  return findUserByApiKeyHash(hashKey(rawKey));
 }
 
 export async function getProfile(userId: string) {

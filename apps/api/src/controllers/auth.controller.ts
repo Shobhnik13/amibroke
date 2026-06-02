@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/async-handler';
-import { getOAuthUrl, completeWebAuth, initiateDevice, pollDevice, getProfile } from '../services/auth.service';
+import { getOAuthUrl, completeWebAuth, getProfile, generateApiKey } from '../services/auth.service';
 import type { AuthRequest } from '../middleware/auth';
 
 const webUrl = () => process.env.WEB_URL ?? 'http://localhost:3000';
@@ -33,21 +33,10 @@ export function logout(_req: Request, res: Response): void {
   res.json({ ok: true });
 }
 
-export const deviceInit = asyncHandler(async (_req, res) => {
-  const data = await initiateDevice();
-  res.json(data);
-});
-
-export const devicePoll = asyncHandler(async (req, res) => {
-  const { device_code } = req.body as { device_code?: string };
-
-  if (!device_code) {
-    res.status(400).json({ error: 'device_code is required' });
-    return;
-  }
-
-  const result = await pollDevice(device_code);
-  res.json(result);
+export const generateKey = asyncHandler(async (req, res) => {
+  const { sub: userId } = (req as AuthRequest).user;
+  const { key, prefix } = await generateApiKey(userId);
+  res.json({ key, prefix });
 });
 
 export const profile = asyncHandler(async (req, res) => {
