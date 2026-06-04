@@ -3,11 +3,14 @@
   "private": true,
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev": "bun --env-file=.env run --cwd apps/api dev",
+    "dev:api": "bun --env-file=.env run --cwd apps/api dev",
+    "dev:web": "bun run --cwd apps/frontend dev",
     "db:generate": "bun run --cwd packages/db generate",
     "db:migrate": "bun --env-file=.env run packages/db/src/migrate.ts",
     "db:studio": "bun run --cwd packages/db studio",
-    "db:seed": "bun --env-file=.env run packages/db/src/seed.ts"
+    "db:seed": "bun --env-file=.env run packages/db/src/seed.ts",
+    "cli:init": "bun --env-file=.env run apps/cli/src/init.ts",
+    "cli:sync": "bun --env-file=.env run apps/cli/src/daemon.ts"
   },
   "dependencies": {
     "@types/node": "^25.9.1"
