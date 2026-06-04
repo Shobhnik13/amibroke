@@ -6,8 +6,9 @@
   "types": "src/index.ts",
   "scripts": {
     "generate": "drizzle-kit generate",
-    "migrate": "bun run src/migrate.ts",
-    "studio": "drizzle-kit studio"
+    "migrate": "bun --env-file=../../.env run src/migrate.ts",
+    "studio": "drizzle-kit studio",
+    "seed": "bun --env-file=../../.env run src/seed.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.36.4",

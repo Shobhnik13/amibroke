@@ -8,6 +8,6 @@ if (!url) throw new Error('DATABASE_URL is not set');
 const sql = postgres(url, { ssl: 'require', max: 1 });
 const db = drizzle(sql);
 
-await migrate(db, { migrationsFolder: './drizzle' });
+await migrate(db, { migrationsFolder: new URL('../drizzle', import.meta.url).pathname });
 console.log('Migrations applied successfully');
 await sql.end();

@@ -1,4 +1,4 @@
-import { pgTable, uuid, integer, text, boolean, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, integer, text, boolean, timestamp, json } from 'drizzle-orm/pg-core';
 import { daemonStatusEnum } from './enums';
 
 export const users = pgTable('users', {
@@ -12,6 +12,7 @@ export const users = pgTable('users', {
   apiKeyPrefix: text('api_key_prefix'),
   daemonStatus: daemonStatusEnum('daemon_status'),
   lastSyncAt: timestamp('last_sync_at'),
+  detectedAgents: json('detected_agents').$type<string[]>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
