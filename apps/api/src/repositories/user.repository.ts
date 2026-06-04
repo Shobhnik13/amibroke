@@ -49,6 +49,11 @@ export async function saveApiKey(userId: string, hash: string, prefix: string): 
 }
 
 
+export async function updateDetectedAgents(userId: string, agents: string[]): Promise<void> {
+  const db = getDb();
+  await db.update(users).set({ detectedAgents: agents, updatedAt: new Date() }).where(eq(users.id, userId));
+}
+
 export async function updateDaemonStatus(
   userId: string,
   status: 'active' | 'stopped' | 'uninstalled',

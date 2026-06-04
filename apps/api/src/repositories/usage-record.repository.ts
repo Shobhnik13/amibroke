@@ -1,4 +1,5 @@
-import { eq, sum, desc, sql } from 'drizzle-orm';
+import { eq, sum, desc, sql, and } from 'drizzle-orm';
+import type { Period } from '../services/leaderboard.service';
 import { getDb, usageRecords, users } from '@amibroke/db';
 import type { SyncRecord } from '../services/sync.service';
 
@@ -49,25 +50,40 @@ export async function sumCostByUserId(userId: string): Promise<string> {
   return row?.total ?? '0';
 }
 
-export async function getLeaderboard(limit: number, offset: number) {
+function periodClause(period: Period) {
+  if (period === 'daily')   return sql`${usageRecords.date} = current_date`;
+  if (period === 'weekly')  return sql`${usageRecords.date} >= current_date - interval '6 days'`;
+  if (period === 'monthly') return sql`${usageRecords.date} >= current_date - interval '29 days'`;
+  return undefined; // all_time — no filter
+}
+
+export async function getLeaderboard(limit: number, offset: number, period: Period) {
   const db = getDb();
-  const totalCost = sql<string>`sum(${usageRecords.costUsd})`.as('total_cost_usd');
+  const totalCostUsd       = sql<string>`sum(${usageRecords.costUsd})`.as('total_cost_usd');
+  const totalInputTokens   = sql<string>`sum(${usageRecords.inputTokens})`.as('total_input_tokens');
+  const totalOutputTokens  = sql<string>`sum(${usageRecords.outputTokens})`.as('total_output_tokens');
+  const totalCacheRead     = sql<string>`sum(${usageRecords.cacheReadTokens})`.as('total_cache_read_tokens');
+  const totalCacheWrite    = sql<string>`sum(${usageRecords.cacheWriteTokens})`.as('total_cache_write_tokens');
   return db
     .select({
       username: users.username,
       avatarUrl: users.avatarUrl,
-      totalCostUsd: totalCost,
+      totalCostUsd,
+      totalInputTokens,
+      totalOutputTokens,
+      totalCacheReadTokens: totalCacheRead,
+      totalCacheWriteTokens: totalCacheWrite,
     })
     .from(usageRecords)
     .innerJoin(users, eq(usageRecords.userId, users.id))
-    .where(eq(users.isPublic, true))
+    .where(and(eq(users.isPublic, true), periodClause(period)))
     .groupBy(users.username, users.avatarUrl)
-    .orderBy(desc(totalCost))
+    .orderBy(desc(totalCostUsd))
     .limit(limit)
     .offset(offset);
 }
 
-export async function getUserBreakdown(userId: string) {
+export async function getUserBreakdown(userId: string, period: Period) {
   const db = getDb();
   return db
     .select({
@@ -78,7 +94,7 @@ export async function getUserBreakdown(userId: string) {
       totalCostUsd: sum(usageRecords.costUsd),
     })
     .from(usageRecords)
-    .where(eq(usageRecords.userId, userId))
+    .where(and(eq(usageRecords.userId, userId), periodClause(period)))
     .groupBy(usageRecords.agent, usageRecords.model)
     .orderBy(desc(sum(usageRecords.costUsd)));
 }

@@ -4,7 +4,7 @@ import { asyncHandler } from '../middleware/async-handler';
 import { processSync, unregisterDaemon } from '../services/sync.service';
 
 const recordSchema = z.object({
-  agent: z.enum(['claude_code', 'opencode', 'codex', 'gemini']),
+  agent: z.enum(['claude_code', 'opencode', 'codex']),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD'),
   model: z.string().default('unknown'),
   input_tokens: z.number().int().min(0).default(0),

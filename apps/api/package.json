@@ -3,8 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "bun run --watch src/server.ts",
-    "start": "bun run src/server.ts"
+    "dev": "bun --env-file=../../.env run --watch src/server.ts",
+    "start": "bun --env-file=../../.env run src/server.ts"
   },
   "dependencies": {
     "@amibroke/db": "workspace:*",

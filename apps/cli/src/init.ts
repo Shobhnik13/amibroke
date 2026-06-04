@@ -45,7 +45,7 @@ function printDetection(detected: { key: string; label: string }[]): void {
 }
 
 async function init() {
-  const apiUrl = process.env.AMIBROKE_API_URL ?? 'https://api.amibroke.dev';
+  const apiUrl = process.env.AMIBROKE_API_URL!;
   const token = process.argv[2];
 
   if (!token) {

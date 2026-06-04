@@ -18,13 +18,17 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
   // API key path (CLI)
   if (token.startsWith('amibroke_')) {
-    const user = await getUserByApiKeyHash(token);
-    if (!user) {
-      res.status(401).json({ error: 'Invalid API key. Please log in at https://amibroke.dev and generate a new key.' });
-      return;
+    try {
+      const user = await getUserByApiKeyHash(token);
+      if (!user) {
+        res.status(401).json({ error: 'Invalid API key. Please log in at https://amibroke.dev and generate a new key.' });
+        return;
+      }
+      (req as AuthRequest).user = { sub: user.id, username: user.username };
+      next();
+    } catch (err) {
+      next(err);
     }
-    (req as AuthRequest).user = { sub: user.id, username: user.username };
-    next();
     return;
   }
 

@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/async-handler';
-import { getOAuthUrl, completeWebAuth, getProfile, generateApiKey } from '../services/auth.service';
+import { getOAuthUrl, completeWebAuth, getProfile, generateApiKey, storeDetectedAgents } from '../services/auth.service';
 import type { AuthRequest } from '../middleware/auth';
 
 const webUrl = () => process.env.WEB_URL ?? 'http://localhost:3000';
@@ -37,6 +37,19 @@ export const generateKey = asyncHandler(async (req, res) => {
   const { sub: userId } = (req as AuthRequest).user;
   const { key, prefix } = await generateApiKey(userId);
   res.json({ key, prefix });
+});
+
+export const detectedAgents = asyncHandler(async (req, res) => {
+  const { sub: userId } = (req as AuthRequest).user;
+  const { agents } = req.body as { agents: string[] };
+
+  if (!Array.isArray(agents)) {
+    res.status(400).json({ error: 'agents must be an array' });
+    return;
+  }
+
+  await storeDetectedAgents(userId, agents);
+  res.json({ ok: true });
 });
 
 export const profile = asyncHandler(async (req, res) => {
