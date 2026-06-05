@@ -1,6 +1,6 @@
 import { eq, sum, desc, sql, and } from 'drizzle-orm';
 import type { Period } from '../services/leaderboard.service';
-import { getDb, usageRecords, users } from '@amibroke/db';
+import { getDb, usageRecords, users } from '../db';
 import type { SyncRecord } from '../services/sync.service';
 
 const BATCH_SIZE = 200;

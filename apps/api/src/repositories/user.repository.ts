@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
-import { getDb, users } from '@amibroke/db';
-import type { User } from '@amibroke/db';
+import { getDb, users } from '../db';
+import type { User } from '../db';
 
 export async function findUserById(id: string): Promise<User | null> {
   const db = getDb();

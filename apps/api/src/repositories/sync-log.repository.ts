@@ -1,6 +1,6 @@
 import { eq, desc } from 'drizzle-orm';
-import { getDb, syncLogs } from '@amibroke/db';
-import type { SyncLog } from '@amibroke/db';
+import { getDb, syncLogs } from '../db';
+import type { SyncLog } from '../db';
 
 export async function getLastSync(userId: string): Promise<SyncLog | null> {
   const db = getDb();
