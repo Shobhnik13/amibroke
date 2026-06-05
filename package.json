@@ -1,7 +1,7 @@
 {
   "name": "amibroke",
   "private": true,
-  "workspaces": ["apps/*"],
+  "workspaces": ["apps/frontend", "apps/cli"],
   "scripts": {
     "dev:api": "cd apps/api && bun --env-file=../../.env run --watch src/server.ts",
     "dev:web": "bun run --cwd apps/frontend dev",
