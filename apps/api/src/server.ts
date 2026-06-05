@@ -27,5 +27,9 @@ app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-const port = parseInt(process.env.PORT ?? '3001', 10);
-app.listen(port, () => logger.info(`API running on http://localhost:${port}`));
+if (process.env.NODE_ENV !== 'production') {
+  const port = parseInt(process.env.PORT ?? '3001', 10);
+  app.listen(port, () => logger.info(`API running on http://localhost:${port}`));
+}
+
+export default app;
