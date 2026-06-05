@@ -83,15 +83,27 @@ export async function getLeaderboard(limit: number, offset: number, period: Peri
     .offset(offset);
 }
 
+export async function getLeaderboardCount(period: Period): Promise<number> {
+  const db = getDb();
+  const [row] = await db
+    .select({ count: sql<string>`count(distinct ${users.id})` })
+    .from(usageRecords)
+    .innerJoin(users, eq(usageRecords.userId, users.id))
+    .where(and(eq(users.isPublic, true), periodClause(period)));
+  return parseInt(row?.count ?? '0', 10);
+}
+
 export async function getUserBreakdown(userId: string, period: Period) {
   const db = getDb();
   return db
     .select({
       agent: usageRecords.agent,
       model: usageRecords.model,
-      totalInputTokens: sum(usageRecords.inputTokens),
-      totalOutputTokens: sum(usageRecords.outputTokens),
-      totalCostUsd: sum(usageRecords.costUsd),
+      totalInputTokens:      sum(usageRecords.inputTokens),
+      totalOutputTokens:     sum(usageRecords.outputTokens),
+      totalCacheReadTokens:  sum(usageRecords.cacheReadTokens),
+      totalCacheWriteTokens: sum(usageRecords.cacheWriteTokens),
+      totalCostUsd:          sum(usageRecords.costUsd),
     })
     .from(usageRecords)
     .where(and(eq(usageRecords.userId, userId), periodClause(period)))

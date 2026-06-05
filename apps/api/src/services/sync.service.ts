@@ -3,7 +3,7 @@ import { batchUpsertRecords } from '../repositories/usage-record.repository';
 import { insertSyncLog } from '../repositories/sync-log.repository';
 
 export type SyncRecord = {
-  agent: 'claude_code' | 'opencode' | 'codex' | 'gemini';
+  agent: 'claude_code' | 'opencode' | 'codex';
   date: string;
   model: string;
   input_tokens: number;

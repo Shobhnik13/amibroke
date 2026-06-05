@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/async-handler';
-import { getOAuthUrl, completeWebAuth, getProfile, generateApiKey, storeDetectedAgents } from '../services/auth.service';
+import { getOAuthUrl, completeWebAuth, getProfile, generateApiKey, storeDetectedAgents, setPublicTheme } from '../services/auth.service';
 import type { AuthRequest } from '../middleware/auth';
 
 const webUrl = () => process.env.WEB_URL ?? 'http://localhost:3000';
@@ -49,6 +49,14 @@ export const detectedAgents = asyncHandler(async (req, res) => {
   }
 
   await storeDetectedAgents(userId, agents);
+  res.json({ ok: true });
+});
+
+export const updateTheme = asyncHandler(async (req, res) => {
+  const { sub: userId } = (req as AuthRequest).user;
+  const { theme } = req.body as { theme: string };
+  if (!theme) { res.status(400).json({ error: 'theme required' }); return; }
+  await setPublicTheme(userId, theme);
   res.json({ ok: true });
 });
 

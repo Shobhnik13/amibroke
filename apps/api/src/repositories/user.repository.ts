@@ -54,6 +54,11 @@ export async function updateDetectedAgents(userId: string, agents: string[]): Pr
   await db.update(users).set({ detectedAgents: agents, updatedAt: new Date() }).where(eq(users.id, userId));
 }
 
+export async function updatePublicTheme(userId: string, theme: string): Promise<void> {
+  const db = getDb();
+  await db.update(users).set({ publicTheme: theme, updatedAt: new Date() }).where(eq(users.id, userId));
+}
+
 export async function updateDaemonStatus(
   userId: string,
   status: 'active' | 'stopped' | 'uninstalled',

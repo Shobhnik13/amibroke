@@ -5,7 +5,7 @@ import {
 } from '../lib/github';
 import type { GitHubUser } from '../lib/github';
 import { signToken } from '../lib/jwt';
-import { upsertUserByGithub, findUserById, saveApiKey, findUserByApiKeyHash, updateDetectedAgents } from '../repositories/user.repository';
+import { upsertUserByGithub, findUserById, saveApiKey, findUserByApiKeyHash, updateDetectedAgents, updatePublicTheme } from '../repositories/user.repository';
 import { generateRawKey, hashKey, extractPrefix } from '../lib/api-key';
 import { sumCostByUserId } from '../repositories/usage-record.repository';
 import { getLastSync } from '../repositories/sync-log.repository';
@@ -37,6 +37,11 @@ export async function storeDetectedAgents(userId: string, agents: string[]): Pro
   await updateDetectedAgents(userId, agents);
 }
 
+export async function setPublicTheme(userId: string, theme: string): Promise<void> {
+  const VALID = new Set(['noir', 'neon', 'plasma', 'matrix', 'ember']);
+  await updatePublicTheme(userId, VALID.has(theme) ? theme : 'noir');
+}
+
 export async function getProfile(userId: string) {
   const user = await findUserById(userId);
   if (!user) return null;
@@ -55,6 +60,8 @@ export async function getProfile(userId: string) {
       avatarUrl: user.avatarUrl,
       isPublic: user.isPublic,
       detectedAgents: user.detectedAgents ?? [],
+      apiKeyPrefix: user.apiKeyPrefix ?? null,
+      publicTheme: user.publicTheme ?? 'noir',
       createdAt: user.createdAt,
     },
     daemon: {

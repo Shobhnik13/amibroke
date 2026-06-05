@@ -12,8 +12,8 @@ export const leaderboard = asyncHandler(async (req, res) => {
   const offset = Math.max(parseInt((req.query.offset as string) ?? '0')  || 0,  0);
   const period = parsePeriod(req.query.period);
 
-  const rows = await getLeaderboardPage(limit, offset, period);
-  res.json({ leaderboard: rows, period });
+  const { rows, total } = await getLeaderboardPage(limit, offset, period);
+  res.json({ leaderboard: rows, total, period });
 });
 
 export const userProfile = asyncHandler(async (req, res) => {

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth';
-import { githubRedirect, githubCallback, logout, profile, generateKey, detectedAgents } from '../controllers/auth.controller';
+import { githubRedirect, githubCallback, logout, profile, generateKey, detectedAgents, updateTheme } from '../controllers/auth.controller';
 
 const router = Router();
 
@@ -10,5 +10,6 @@ router.post('/logout', logout);
 router.get('/profile', requireAuth, profile);
 router.post('/key', requireAuth, generateKey);
 router.post('/agents', requireAuth, detectedAgents);
+router.patch('/public-theme', requireAuth, updateTheme);
 
 export default router;

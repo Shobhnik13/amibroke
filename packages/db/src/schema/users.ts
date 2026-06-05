@@ -13,6 +13,7 @@ export const users = pgTable('users', {
   daemonStatus: daemonStatusEnum('daemon_status'),
   lastSyncAt: timestamp('last_sync_at'),
   detectedAgents: json('detected_agents').$type<string[]>(),
+  publicTheme: text('public_theme').default('noir').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

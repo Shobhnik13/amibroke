@@ -48,83 +48,162 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ── shadcn tokens (kept for shadcn components) ───── */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: #0f0d0b;
+  --foreground: #f0ece0;
+  --card: #1a1714;
+  --card-foreground: #f0ece0;
+  --popover: #1a1714;
+  --popover-foreground: #f0ece0;
+  --primary: #fff261;
+  --primary-foreground: #0f0d0b;
+  --secondary: #252118;
+  --secondary-foreground: #f0ece0;
+  --muted: #252118;
+  --muted-foreground: #8c8278;
+  --accent: #252118;
+  --accent-foreground: #f0ece0;
+  --destructive: #ff6464;
+  --border: rgba(240, 236, 224, 0.14);
+  --input: rgba(240, 236, 224, 0.1);
+  --ring: #fff261;
+  --radius: 0.75rem;
+  --sidebar: #1a1714;
+  --sidebar-foreground: #f0ece0;
+  --sidebar-primary: #fff261;
+  --sidebar-primary-foreground: #0f0d0b;
+  --sidebar-accent: #252118;
+  --sidebar-accent-foreground: #f0ece0;
+  --sidebar-border: rgba(240, 236, 224, 0.1);
+  --sidebar-ring: #fff261;
+  --chart-1: #fff261;
+  --chart-2: #59e8ff;
+  --chart-3: #5dff9c;
+  --chart-4: #ff6464;
+  --chart-5: #ff7bd4;
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+/* ── amibroke design tokens ───────────────────────── */
+:root {
+  --nb-bg: #0f0d0b;
+  --nb-surface: #1a1714;
+  --nb-ink: #f0ece0;
+  --nb-muted: #8c8278;
+  --nb-yellow: #fff261;
+  --nb-cyan: #59e8ff;
+  --nb-coral: #ff6464;
+  --nb-green: #5dff9c;
+  --nb-pink: #ff7bd4;
+  --nb-blue: #5f7cff;
 }
 
+/* ── base ─────────────────────────────────────────── */
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    box-sizing: border-box;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+
   html {
-    @apply font-sans;
+    background: var(--nb-bg);
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--nb-bg);
+    background-image:
+      linear-gradient(90deg, rgba(240, 236, 224, 0.05) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(240, 236, 224, 0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+    color: var(--nb-ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    min-height: 100dvh;
+  }
+}
+
+/* ── animations ───────────────────────────────────── */
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── ticker ───────────────────────────────────────── */
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll 30s linear infinite;
+}
+
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
+/* ── cursor blink ─────────────────────────────────── */
+.terminal-cursor {
+  animation: cursor-blink 1.1s step-end infinite;
+}
+
+/* ── hero entrance ────────────────────────────────── */
+.hero-enter {
+  animation: fade-up 0.6s ease both;
+}
+.hero-enter-1 { animation-delay: 0.05s; }
+.hero-enter-2 { animation-delay: 0.12s; }
+.hero-enter-3 { animation-delay: 0.2s; }
+.hero-enter-4 { animation-delay: 0.28s; }
+
+/* ── responsive ───────────────────────────────────── */
+@media (max-width: 1040px) {
+  .hero-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .hero-visual {
+    display: none !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .platforms-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .platforms-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .steps-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .lb-cost {
+    font-size: 1.1rem !important;
+  }
+  .cta-block {
+    padding: 36px 24px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track,
+  .terminal-cursor,
+  .hero-enter {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
