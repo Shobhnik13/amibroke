@@ -27,7 +27,7 @@ app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-if (process.env.NODE_ENV !== 'production') {
+if (!process.env.VERCEL) {
   const port = parseInt(process.env.PORT ?? '3001', 10);
   app.listen(port, () => logger.info(`API running on http://localhost:${port}`));
 }
