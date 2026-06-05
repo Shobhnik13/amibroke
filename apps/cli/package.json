@@ -4,6 +4,9 @@
   "bin": {
     "amibroke": "./src/init.ts"
   },
+  "files": [
+    "src/"
+  ],
   "scripts": {
     "dev": "bun run src/init.ts"
   },

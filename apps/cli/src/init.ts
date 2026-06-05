@@ -45,7 +45,7 @@ function printDetection(detected: { key: string; label: string }[]): void {
 }
 
 async function init() {
-  const apiUrl = process.env.AMIBROKE_API_URL!;
+  const apiUrl = process.env.AMIBROKE_API_URL ?? 'https://amibroke-api.vercel.app';
   const token = process.argv[2];
 
   if (!token) {

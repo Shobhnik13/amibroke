@@ -45,12 +45,21 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    // extract JWT from hash if coming from OAuth redirect
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      if (hash.startsWith('#token=')) {
+        const token = hash.slice(7);
+        localStorage.setItem('amibroke_token', token);
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
+
     api.get<Profile>('/api/auth/profile')
       .then(res => {
         const u = res.data.user;
         setUsername(u.username);
         if (u.apiKeyPrefix) {
-          // already onboarded — skip to profile
           router.replace(`/${u.username}`);
         } else {
           setStep('generate');
