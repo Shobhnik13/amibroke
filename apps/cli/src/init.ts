@@ -44,6 +44,13 @@ function printDetection(detected: { key: string; label: string }[]): void {
   console.log('');
 }
 
+function daemonFileExists(): boolean {
+  if (process.platform === 'darwin') {
+    return existsSync(join(HOME, 'Library', 'LaunchAgents', 'dev.amibroke.daemon.plist'));
+  }
+  return existsSync(join(HOME, '.config', 'systemd', 'user', 'amibroke.timer'));
+}
+
 async function init() {
   const apiUrl = process.env.AMIBROKE_API_URL ?? 'https://amibroke-api.vercel.app';
   const token = process.argv[2];
@@ -52,6 +59,17 @@ async function init() {
     console.error(`${R}Usage: bunx amibroke init <token>${X}`);
     console.error(`${D}Get your token at https://amibroke.dev/dashboard${X}`);
     process.exit(1);
+  }
+
+  const authExists = existsSync(join(HOME, '.config', 'amibroke', 'auth.json'));
+  if (authExists && daemonFileExists()) {
+    console.log('');
+    console.log(`${G}${B}Already installed.${X}`);
+    console.log(`${D}amibroke is already set up and actively syncing on this machine.${X}`);
+    console.log('');
+    console.log(`  ${D}To uninstall or reinstall, see:${X}  ${B}https://amibroke.dev${X}`);
+    console.log('');
+    process.exit(0);
   }
 
   process.stdout.write(`Validating token${D}...${X}`);

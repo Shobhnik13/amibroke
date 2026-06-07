@@ -41,6 +41,52 @@ const RATES: Record<string, { input: number; output: number; cacheRead: number; 
   'gpt-4o-mini':     { input: 0.15,  output: 0.60,  cacheRead: 0.075, cacheWrite: 0.00 },
   'o3':              { input: 10.00, output: 40.00, cacheRead: 2.50,  cacheWrite: 0.00 },
   'o4-mini':         { input: 1.10,  output: 4.40,  cacheRead: 0.275, cacheWrite: 0.00 },
+
+  // Google Gemini (source: ai.google.dev/pricing)
+  'gemini-2.5-pro':          { input: 1.25,  output: 10.00, cacheRead: 0.31,  cacheWrite: 0.00 },
+  'gemini-2.5-flash':        { input: 0.15,  output: 0.60,  cacheRead: 0.0375, cacheWrite: 0.00 },
+  'gemini-2.5-flash-lite':   { input: 0.10,  output: 0.40,  cacheRead: 0.025,  cacheWrite: 0.00 },
+  'gemini-2.0-flash':        { input: 0.10,  output: 0.40,  cacheRead: 0.025,  cacheWrite: 0.00 },
+  'gemini-2.0-flash-lite':   { input: 0.075, output: 0.30,  cacheRead: 0.01875, cacheWrite: 0.00 },
+  'gemini-1.5-pro':          { input: 1.25,  output: 5.00,  cacheRead: 0.3125, cacheWrite: 0.00 },
+  'gemini-1.5-flash':        { input: 0.075, output: 0.30,  cacheRead: 0.01875, cacheWrite: 0.00 },
+
+  // DeepSeek (source: api-docs.deepseek.com/quick_start/pricing)
+  'deepseek-chat':      { input: 0.27,  output: 1.10,  cacheRead: 0.07,  cacheWrite: 0.00 },
+  'deepseek-reasoner':  { input: 0.55,  output: 2.19,  cacheRead: 0.14,  cacheWrite: 0.00 },
+
+  // Mistral (source: mistral.ai/pricing)
+  'mistral-large-latest':   { input: 2.00, output: 6.00,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'mistral-medium-latest':  { input: 0.40, output: 2.00,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'mistral-small-latest':   { input: 0.10, output: 0.30,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'codestral-latest':       { input: 0.20, output: 0.60,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'ministral-8b-latest':    { input: 0.10, output: 0.10,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'ministral-3b-latest':    { input: 0.04, output: 0.04,  cacheRead: 0.00, cacheWrite: 0.00 },
+
+  // xAI Grok (source: x.ai/api)
+  'grok-3':         { input: 3.00,  output: 15.00, cacheRead: 0.00, cacheWrite: 0.00 },
+  'grok-3-fast':    { input: 0.60,  output: 4.00,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'grok-3-mini':    { input: 0.30,  output: 0.50,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'grok-2':         { input: 2.00,  output: 10.00, cacheRead: 0.00, cacheWrite: 0.00 },
+  'grok-2-mini':    { input: 0.20,  output: 0.50,  cacheRead: 0.00, cacheWrite: 0.00 },
+
+  // Alibaba Qwen (source: help.aliyun.com/qwen-api-pricing)
+  'qwen-max':         { input: 1.60, output: 6.40,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'qwen-plus':        { input: 0.40, output: 1.20,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'qwen-turbo':       { input: 0.05, output: 0.20,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'qwen-long':        { input: 0.05, output: 0.20,  cacheRead: 0.00, cacheWrite: 0.00 },
+
+  // Moonshot (Kimi) (source: platform.moonshot.cn/pricing)
+  'moonshot-v1-8k':   { input: 0.12, output: 0.12,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'moonshot-v1-32k':  { input: 0.24, output: 0.24,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'moonshot-v1-128k': { input: 0.90, output: 0.90,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'kimi-k2':          { input: 0.60, output: 2.50,  cacheRead: 0.07, cacheWrite: 0.00 },
+
+  // Zhipu GLM (source: bigmodel.cn/pricing)
+  'glm-4':            { input: 0.14, output: 0.14,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'glm-4-flash':      { input: 0.00, output: 0.00,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'glm-4-plus':       { input: 0.70, output: 0.70,  cacheRead: 0.00, cacheWrite: 0.00 },
+  'glm-z1':           { input: 0.14, output: 0.14,  cacheRead: 0.00, cacheWrite: 0.00 },
 };
 
 // Strip trailing date suffix e.g. claude-haiku-4-5-20251001 → claude-haiku-4-5

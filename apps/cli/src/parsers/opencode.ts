@@ -3,15 +3,16 @@ import { addToAgg, type AggMap } from '../lib/aggregate';
 import { calcCost, normalizeModel } from '../lib/pricing';
 
 interface MessageData {
-  type: string;
-  model?: string;
+  role: string;
+  modelID?: string;
+  providerID?: string;
   tokens?: {
     input?: number;
     output?: number;
     cache?: { read?: number; write?: number };
   };
   cost?: number;
-  time?: { created?: number };
+  time?: { created?: number; completed?: number };
 }
 
 interface MessageRow {
@@ -50,9 +51,9 @@ export async function parseOpencode(
         continue;
       }
 
-      if (msg.type !== 'assistant') continue;
+      if (msg.role !== 'assistant') continue;
 
-      const model = msg.model;
+      const model = msg.modelID ?? null;
       const tokens = msg.tokens;
       if (!model || !tokens) continue;
 

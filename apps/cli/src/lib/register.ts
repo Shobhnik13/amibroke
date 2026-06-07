@@ -39,7 +39,7 @@ async function registerLaunchd(bunPath: string, daemonScriptPath: string): Promi
     <string>${daemonScriptPath}</string>
   </array>
   <key>StartInterval</key>
-  <integer>10800</integer>
+  <integer>300</integer>
   <key>RunAtLoad</key>
   <true/>
   <key>StandardOutPath</key>
@@ -75,7 +75,7 @@ Description=amibroke sync timer
 
 [Timer]
 OnBootSec=2min
-OnUnitActiveSec=3h
+OnUnitActiveSec=5min
 
 [Install]
 WantedBy=timers.target

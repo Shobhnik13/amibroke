@@ -24,10 +24,6 @@ async function run() {
 
   const records = aggToRecords(agg);
 
-  if (records.length === 0) {
-    process.exit(0);
-  }
-
   const result = await postSync(auth.token, auth.api_url, records);
 
   await saveState({
@@ -39,7 +35,11 @@ async function run() {
     last_sync_at: new Date().toISOString(),
   });
 
-  console.log(`Synced ${result.records_upserted} records`);
+  if (records.length === 0) {
+    console.log('Nothing new to sync');
+  } else {
+    console.log(`Synced ${result.records_upserted} records`);
+  }
 }
 
 run().catch((err) => {
