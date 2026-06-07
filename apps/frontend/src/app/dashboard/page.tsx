@@ -168,7 +168,7 @@ export default function DashboardPage() {
                   Install the CLI
                 </h1>
                 <p style={{ fontSize: '0.9rem', color: muted, fontWeight: 600, lineHeight: 1.55, margin: 0 }}>
-                  Run this command in your terminal. macOS &amp; Linux only.
+                  Run this command in your terminal.
                 </p>
               </div>
 
