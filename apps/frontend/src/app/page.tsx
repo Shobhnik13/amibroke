@@ -217,7 +217,7 @@ export default function HomePage() {
             </p>
 
             <div
-              className="hero-enter hero-enter-4"
+              className="hero-enter hero-enter-4 hero-cta-row"
               style={{ display: "flex", flexWrap: "wrap", gap: 14 }}
             >
               <a
@@ -1054,6 +1054,7 @@ export default function HomePage() {
           {MOCK_LB.map((entry, i) => (
             <div
               key={entry.rank}
+              className="lb-row-cols"
               style={{
                 display: "grid",
                 gridTemplateColumns: "64px minmax(0, 1fr) auto",

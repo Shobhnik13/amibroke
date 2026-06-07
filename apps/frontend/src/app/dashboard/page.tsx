@@ -17,7 +17,6 @@ const yellow  = '#fff261';
 const coral   = '#ff6464';
 const green   = '#5dff9c';
 const cyan    = '#59e8ff';
-const pink    = '#ff7bd4';
 
 const TOOLS = [
   { key: 'claude_code', label: 'Claude Code', color: coral },
@@ -138,7 +137,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Body */}
-        <div style={{ padding: '32px 28px', display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div className="dash-card" style={{ padding: '32px 28px', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
           {/* ── STEP: GENERATE ── */}
           {step === 'generate' && (
@@ -183,7 +182,6 @@ export default function DashboardPage() {
                   <GhostBtn onClick={() => setShowKey(v => !v)}>{showKey ? 'Hide' : 'Show'}</GhostBtn>
                   <GhostBtn onClick={() => handleCopy(rawKey, 'key')} active={copied === 'key'}>{copied === 'key' ? '✓ Copied' : 'Copy'}</GhostBtn>
                 </div>
-                <span style={{ fontSize: '0.72rem', color: coral, fontWeight: 700 }}>⚠ You won&apos;t see the full key again after leaving this page</span>
               </div>
 
               {/* Install command */}

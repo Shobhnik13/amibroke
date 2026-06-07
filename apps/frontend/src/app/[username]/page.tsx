@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import api from '@/lib/api';
 import { getFunnyLine } from '@/lib/funny';
+import { useWindowWidth } from '@/lib/use-responsive';
 
 // ── types ────────────────────────────────────────────────
 interface BreakdownRow {
@@ -111,7 +112,6 @@ export default function ProfilePage() {
   const [init,     setInit]     = useState(true);
   const [fetchErr, setFetchErr] = useState<'not_found' | 'private' | null>(null);
   const [lbLoading, setLbLoading] = useState(false);
-  const [newKey,    setNewKey]    = useState<string | null>(null);
   const [showKey,   setShowKey]   = useState(false);
   const [genning,   setGenning]   = useState(false);
   const [keyCopied, setKeyCopied] = useState(false);
@@ -119,6 +119,15 @@ export default function ProfilePage() {
   const [shareTheme, setShareTheme] = useState<ShareTheme>('noir');
   const [linkCopied, setLinkCopied] = useState(false);
   const [savingTheme, setSavingTheme] = useState(false);
+  const [uninstallOS, setUninstallOS] = useState<'macos' | 'linux'>('macos');
+  const [uninstallCopied, setUninstallCopied] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [uninstallOpen, setUninstallOpen] = useState(false);
+  const [setupCmdCopied, setSetupCmdCopied] = useState(false);
+  const [storedKey, setStoredKey] = useState<string | null>(null);
+
+  const w = useWindowWidth();
+  const isMobile = w < 640;
 
   const isOwn = own?.user.username === username;
 
@@ -127,9 +136,13 @@ export default function ProfilePage() {
       try {
         const [pubRes] = await Promise.allSettled([
           api.get<PublicProfile>(`/api/leaderboard/users/${username}?period=all_time`),
-          api.get<OwnProfile>('/api/auth/profile').then(r => {
+          api.get<OwnProfile>('/api/auth/profile').then(async r => {
             setOwn(r.data);
             setShareTheme((r.data.user.publicTheme as ShareTheme) ?? 'noir');
+            if (r.data.user.apiKeyPrefix) {
+              const keyRes = await api.get<{ key: string }>('/api/auth/key').catch(() => null);
+              if (keyRes) setStoredKey(keyRes.data.key);
+            }
           }),
         ]);
         if (pubRes.status === 'fulfilled') {
@@ -152,13 +165,15 @@ export default function ProfilePage() {
     } finally { setLbLoading(false); }
   }, [page, lbPeriod]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === 'leaderboard') fetchLb(); }, [tab, fetchLb]);
 
   async function handleGenKey() {
     setGenning(true);
     try {
       const r = await api.post<{ key: string; prefix: string }>('/api/auth/key');
-      setNewKey(r.data.key); setShowKey(true);
+      setStoredKey(r.data.key);
+      setShowKey(true);
       setOwn(prev => prev ? { ...prev, user: { ...prev.user, apiKeyPrefix: r.data.prefix } } : prev);
     } finally { setGenning(false); }
   }
@@ -167,6 +182,32 @@ export default function ProfilePage() {
     await navigator.clipboard.writeText(text);
     if (which === 'key') { setKeyCopied(true); setTimeout(() => setKeyCopied(false), 2000); }
     else { setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }
+  }
+
+  const UNINSTALL_CMDS = {
+    macos: [
+      'launchctl unload ~/Library/LaunchAgents/dev.amibroke.daemon.plist',
+      'rm ~/Library/LaunchAgents/dev.amibroke.daemon.plist',
+      'rm -rf ~/.config/amibroke',
+    ],
+    linux: [
+      'systemctl --user disable --now amibroke.timer',
+      'rm ~/.config/systemd/user/amibroke.service ~/.config/systemd/user/amibroke.timer',
+      'rm -rf ~/.config/amibroke',
+    ],
+  };
+
+  async function copyUninstall() {
+    await navigator.clipboard.writeText(UNINSTALL_CMDS[uninstallOS].join('\n'));
+    setUninstallCopied(true);
+    setTimeout(() => setUninstallCopied(false), 2000);
+  }
+
+  async function copySetupCmd() {
+    const cmd = storedKey ? `bunx amibroke init ${storedKey}` : 'bunx amibroke init <your-key>';
+    await navigator.clipboard.writeText(cmd);
+    setSetupCmdCopied(true);
+    setTimeout(() => setSetupCmdCopied(false), 2000);
   }
 
   async function handleThemeChange(t: ShareTheme) {
@@ -219,15 +260,36 @@ export default function ProfilePage() {
       </header>
 
       {/* ── HERO ── */}
-      <section style={{ width: 'min(1180px, calc(100% - 40px))', margin: '0 auto', padding: '44px 0 0' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, marginBottom: 36 }}>
-          <Avatar url={pub.user.avatarUrl} name={pub.user.username} size={80} border={`3px solid ${ink}`} shadow={`5px 5px 0 ${yellow}`} radius={20} />
-          <div>
-            <h1 style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, color: ink, textTransform: 'uppercase', lineHeight: 0.95, letterSpacing: '-0.01em', marginBottom: 10 }}>
-              @{pub.user.username}
-            </h1>
-            <p style={{ fontSize: '0.9rem', fontWeight: 700, color: muted, margin: 0 }}>{getFunnyLine(totalCost)}</p>
+      <section style={{ width: isMobile ? 'calc(100% - 24px)' : 'min(1180px, calc(100% - 40px))', margin: '0 auto', padding: `${isMobile ? '20px' : '44px'} 0 0` }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, marginBottom: 36, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20 }}>
+            <Avatar url={pub.user.avatarUrl} name={pub.user.username} size={80} border={`3px solid ${ink}`} shadow={`5px 5px 0 ${yellow}`} radius={20} />
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+                <h1 style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, color: ink, textTransform: 'uppercase', lineHeight: 0.95, letterSpacing: '-0.01em', margin: 0 }}>
+                  @{pub.user.username}
+                </h1>
+                <a
+                  href={`https://github.com/${pub.user.username}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 30, padding: '0 11px', border: `2px solid rgba(240,236,224,0.22)`, borderRadius: 9, background: surface, color: muted, fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', textDecoration: 'none', flexShrink: 0 }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                  GitHub
+                </a>
+              </div>
+              <p style={{ fontSize: '0.9rem', fontWeight: 700, color: muted, margin: 0 }}>{getFunnyLine(totalCost)}</p>
+            </div>
           </div>
+          {isOwn && (
+            <button
+              onClick={() => setShowShare(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 20px', border: `3px solid ${ink}`, borderRadius: 14, background: pink, color: bg, fontWeight: 900, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', boxShadow: `4px 4px 0 ${ink}`, fontFamily: 'inherit', flexShrink: 0 }}
+            >
+              ↗ Share receipt
+            </button>
+          )}
         </div>
 
         {/* ── TABS ── */}
@@ -244,123 +306,155 @@ export default function ProfilePage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18, paddingBottom: 80 }}>
 
             {/* Stats row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : 4}, minmax(0,1fr))`, gap: 12 }}>
               <StatCard label="Total spend"    value={fmtCost(totalCost.toString())} color={coral} />
               <StatCard label="Input tokens"   value={fmt(agg.input)}                color={yellow} />
               <StatCard label="Output tokens"  value={fmt(agg.output)}               color={cyan} />
               <StatCard label="Cache read"     value={fmt(agg.cacheR)}               color={green} />
             </div>
 
-            {/* Own-profile: api key + daemon */}
+            {/* Breakdown table — shown first */}
+            {pub.breakdown.length > 0 && (
+              <div style={{ border: `3px solid ${ink}`, borderRadius: 22, background: surface, overflow: 'hidden', boxShadow: `5px 5px 0 rgba(240,236,224,0.06)` }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <div style={{ minWidth: 520 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 80px 80px 80px 80px', gap: 8, padding: '12px 20px', borderBottom: `2px solid rgba(240,236,224,0.08)`, background: term }}>
+                      {['Agent', 'Model', 'Input', 'Output', 'Cache R', 'Cost'].map(h => (
+                        <span key={h} style={{ fontSize: '0.68rem', fontWeight: 900, color: muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</span>
+                      ))}
+                    </div>
+                    {pub.breakdown.map((row, i) => (
+                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 80px 80px 80px 80px', gap: 8, padding: '12px 20px', borderBottom: `1px solid rgba(240,236,224,0.05)`, alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{AGENT_LBL[row.agent] ?? row.agent}</span>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 600, color: muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.model}</span>
+                        <Mono>{fmt(row.totalInputTokens)}</Mono>
+                        <Mono>{fmt(row.totalOutputTokens)}</Mono>
+                        <Mono color={cyan}>{fmt(row.totalCacheReadTokens)}</Mono>
+                        <Mono color={coral} bold>{fmtCost(row.totalCostUsd)}</Mono>
+                      </div>
+                    ))}
+                    <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 80px 80px 80px 80px', gap: 8, padding: '12px 20px', background: 'rgba(240,236,224,0.03)', borderTop: `2px solid rgba(240,236,224,0.1)`, alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 900, color: ink, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</span>
+                      <span />
+                      <Mono bold>{fmt(agg.input)}</Mono>
+                      <Mono bold>{fmt(agg.output)}</Mono>
+                      <Mono color={cyan} bold>{fmt(agg.cacheR)}</Mono>
+                      <Mono color={coral} bold>{fmtCost(totalCost.toString())}</Mono>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Own-profile: api key + accordions */}
             {isOwn && own && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 16 }}>
-                {/* API KEY */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                {/* ── API KEY + DAEMON (combined full-width card) ── */}
                 <div style={{ border: `3px solid ${ink}`, borderRadius: 22, background: surface, padding: '22px 20px', boxShadow: `5px 5px 0 ${yellow}`, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <Pill bg={yellow} text="🔑 API key" />
-                  {newKey ? (
-                    <>
-                      <div style={{ border: `2px solid ${coral}`, borderRadius: 10, background: 'rgba(255,100,100,0.07)', padding: '8px 12px', fontSize: '0.74rem', fontWeight: 700, color: coral, lineHeight: 1.5 }}>
-                        ⚠ Copy now — you won&apos;t see the full key again
-                      </div>
-                      <KeyBox value={showKey ? newKey : `${own.user.apiKeyPrefix}${'•'.repeat(28)}`} green wrap={showKey}>
-                        <TinyBtn onClick={() => setShowKey(v => !v)}>{showKey ? 'Hide' : 'Show'}</TinyBtn>
-                        <TinyBtn onClick={() => copyText(newKey, 'key')} active={keyCopied}>{keyCopied ? '✓ Copied' : 'Copy'}</TinyBtn>
-                      </KeyBox>
-                    </>
-                  ) : own.user.apiKeyPrefix ? (
-                    <>
-                      <KeyBox value={`${own.user.apiKeyPrefix}${'•'.repeat(28)}`} />
-                      <div style={{ background: term, border: `2px solid rgba(240,236,224,0.06)`, borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <p style={{ fontSize: '0.72rem', fontWeight: 600, color: muted, margin: 0, lineHeight: 1.6 }}>
-                          Forgot your key or haven&apos;t set up yet? Run this on your Mac / Linux terminal:
-                        </p>
-                        <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.76rem', fontWeight: 700, color: green }}>
-                          $ bunx amibroke init &lt;your-key&gt;
-                        </div>
-                        <p style={{ fontSize: '0.7rem', fontWeight: 600, color: muted, margin: 0 }}>
-                          Already set up? Key is saved at <span style={{ fontFamily: 'ui-monospace, monospace', color: cyan }}>~/.config/amibroke/auth.json</span>
-                        </p>
-                      </div>
-                    </>
+                  {/* header row */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                    <Pill bg={yellow} text="🔑 API key" />
+                    <Pill bg={DAEMON_COL[own.daemon.status] ?? muted} text={`● Daemon · ${own.daemon.status.replace(/_/g, ' ')}`} />
+                  </div>
+
+                  {/* key display */}
+                  {(storedKey ?? own.user.apiKeyPrefix) ? (
+                    <KeyBox value={showKey ? (storedKey ?? `${own.user.apiKeyPrefix}${'•'.repeat(28)}`) : `${own.user.apiKeyPrefix}${'•'.repeat(28)}`} green={!!showKey} wrap={showKey}>
+                      <TinyBtn onClick={() => setShowKey(v => !v)}>{showKey ? 'Hide' : 'Show'}</TinyBtn>
+                      <TinyBtn onClick={() => copyText(storedKey ?? own.user.apiKeyPrefix!, 'key')} active={keyCopied}>{keyCopied ? '✓ Copied' : 'Copy'}</TinyBtn>
+                    </KeyBox>
                   ) : (
                     <button onClick={handleGenKey} disabled={genning} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 40, padding: '0 14px', border: `2px solid ${ink}`, borderRadius: 12, background: coral, color: bg, fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase', cursor: genning ? 'wait' : 'pointer', opacity: genning ? 0.6 : 1, letterSpacing: '0.04em', fontFamily: 'inherit' }}>
                       {genning ? 'Generating...' : 'Generate API key →'}
                     </button>
                   )}
-                </div>
 
-                {/* DAEMON */}
-                <div style={{ border: `3px solid ${ink}`, borderRadius: 22, background: surface, padding: '22px 20px', boxShadow: `5px 5px 0 rgba(240,236,224,0.07)`, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <Pill bg={DAEMON_COL[own.daemon.status] ?? muted} text={`● Daemon · ${own.daemon.status.replace(/_/g, ' ')}`} />
-                  {!own.daemon.lastSyncAt ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <p style={{ fontSize: '0.86rem', fontWeight: 600, color: muted, lineHeight: 1.55, margin: 0 }}>{own.daemon.message}</p>
-                      <div style={{ background: term, border: `2px solid rgba(240,236,224,0.06)`, borderRadius: 12, padding: '12px 14px', fontFamily: 'ui-monospace, monospace', fontSize: '0.78rem', fontWeight: 600, color: muted }}>
-                        $ bunx amibroke init &lt;your-key&gt;
-                      </div>
+                  {/* daemon inline row */}
+                  {own.daemon.lastSyncAt ? (
+                    <div style={{ background: term, border: `2px solid rgba(240,236,224,0.07)`, borderRadius: 12, padding: '10px 14px', fontFamily: 'ui-monospace, monospace', fontSize: '0.75rem', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <KVRow l="last sync" r={timeAgo(own.daemon.lastSyncAt)} rColor={ink} />
+                      {own.daemon.nextSyncAt && <KVRow l="next sync" r={timeUntil(own.daemon.nextSyncAt)} rColor={green} />}
+                      {own.daemon.lastSyncedAgents.length > 0 && <KVRow l="last synced agents" r={own.daemon.lastSyncedAgents.map(a => AGENT_LBL[a] ?? a).join(', ')} rColor={cyan} />}
                     </div>
                   ) : (
-                    <>
-                      <div style={{ background: term, border: `2px solid rgba(240,236,224,0.08)`, borderRadius: 12, padding: '12px 14px', fontFamily: 'ui-monospace, monospace', fontSize: '0.75rem', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <KVRow l="last sync" r={timeAgo(own.daemon.lastSyncAt)} rColor={ink} />
-                        {own.daemon.nextSyncAt && <KVRow l="next sync" r={timeUntil(own.daemon.nextSyncAt)} rColor={green} />}
-                        {own.daemon.lastSyncedAgents.length > 0 && <KVRow l="agents" r={own.daemon.lastSyncedAgents.map(a => AGENT_LBL[a] ?? a).join(', ')} rColor={cyan} />}
-                      </div>
-                      {own.user.detectedAgents.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-                          {own.user.detectedAgents.map(a => (
-                            <div key={a} style={{ border: `2px solid rgba(240,236,224,0.18)`, borderRadius: 999, padding: '4px 10px', fontSize: '0.7rem', fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                              {AGENT_LBL[a] ?? a}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </>
+                    <p style={{ fontSize: '0.8rem', fontWeight: 600, color: muted, lineHeight: 1.5, margin: 0 }}>{own.daemon.message}</p>
                   )}
                 </div>
+
+                {/* ── SETUP & HELP accordion ── */}
+                <div style={{ border: `3px solid rgba(240,236,224,0.14)`, borderRadius: 18, background: surface, overflow: 'hidden' }}>
+                  <button
+                    onClick={() => setHelpOpen(v => !v)}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', border: 'none', background: 'transparent', color: ink, fontWeight: 800, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    <span>📦 Setup &amp; help</span>
+                    <span style={{ color: muted, fontSize: '0.8rem', fontWeight: 700, transition: 'transform 0.15s', display: 'inline-block', transform: helpOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
+                  </button>
+                  {helpOpen && (
+                    <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 14, borderTop: `2px solid rgba(240,236,224,0.07)` }}>
+                      <p style={{ fontSize: '0.8rem', fontWeight: 600, color: muted, lineHeight: 1.55, margin: '14px 0 0' }}>
+                        Install the CLI and paste your key to start tracking. macOS &amp; Linux only.
+                      </p>
+                      <div style={{ background: term, border: `2px solid rgba(240,236,224,0.08)`, borderRadius: 14, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                          <span style={{ color: green, fontFamily: 'ui-monospace, monospace', fontSize: '0.74rem', fontWeight: 700, flexShrink: 0, paddingTop: 1 }}>$</span>
+                          <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.76rem', fontWeight: 600, color: ink, flex: 1, wordBreak: 'break-all' }}>
+                            bunx amibroke init{' '}
+                            <span style={{ color: yellow }}>{storedKey ?? '<your-key>'}</span>
+                          </span>
+                          <TinyBtn onClick={copySetupCmd} active={setupCmdCopied}>{setupCmdCopied ? '✓' : 'Copy'}</TinyBtn>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── UNINSTALL accordion ── */}
+                <div style={{ border: `3px solid rgba(240,236,224,0.14)`, borderRadius: 18, background: surface, overflow: 'hidden' }}>
+                  <button
+                    onClick={() => setUninstallOpen(v => !v)}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', border: 'none', background: 'transparent', color: muted, fontWeight: 800, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    <span>🗑 Uninstall / stop tracking</span>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, transition: 'transform 0.15s', display: 'inline-block', transform: uninstallOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
+                  </button>
+                  {uninstallOpen && (
+                    <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 14, borderTop: `2px solid rgba(240,236,224,0.07)` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginTop: 14 }}>
+                        <p style={{ fontSize: '0.8rem', fontWeight: 600, color: muted, lineHeight: 1.5, margin: 0 }}>
+                          Stops the daemon and removes local config. Your account and data on amibroke.dev are unaffected.
+                        </p>
+                        <div style={{ display: 'flex', border: `2px solid rgba(240,236,224,0.18)`, borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}>
+                          {(['macos', 'linux'] as const).map(os => (
+                            <button key={os} onClick={() => setUninstallOS(os)} style={{ minHeight: 28, padding: '0 12px', border: 'none', background: uninstallOS === os ? ink : 'transparent', color: uninstallOS === os ? bg : muted, fontWeight: 800, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', fontFamily: 'inherit' }}>
+                              {os === 'macos' ? 'macOS' : 'Linux'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ background: term, border: `2px solid rgba(240,236,224,0.08)`, borderRadius: 14, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {UNINSTALL_CMDS[uninstallOS].map((cmd, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ color: coral, fontFamily: 'ui-monospace, monospace', fontSize: '0.74rem', fontWeight: 700, flexShrink: 0 }}>$</span>
+                            <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.74rem', fontWeight: 600, color: ink, flex: 1, wordBreak: 'break-all' }}>{cmd}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 600, color: muted }}>
+                          Config at <span style={{ fontFamily: 'ui-monospace, monospace', color: cyan }}>~/.config/amibroke/</span>
+                        </span>
+                        <TinyBtn onClick={copyUninstall} active={uninstallCopied}>{uninstallCopied ? '✓ Copied' : 'Copy all'}</TinyBtn>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
               </div>
             )}
 
-            {/* Breakdown table */}
-            {pub.breakdown.length > 0 && (
-              <div style={{ border: `3px solid ${ink}`, borderRadius: 22, background: surface, overflow: 'hidden', boxShadow: `5px 5px 0 rgba(240,236,224,0.06)` }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 90px 90px 90px 90px', gap: 10, padding: '12px 20px', borderBottom: `2px solid rgba(240,236,224,0.08)`, background: term }}>
-                  {['Agent', 'Model', 'Input', 'Output', 'Cache R', 'Cost'].map(h => (
-                    <span key={h} style={{ fontSize: '0.68rem', fontWeight: 900, color: muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</span>
-                  ))}
-                </div>
-                {pub.breakdown.map((row, i) => (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '150px 1fr 90px 90px 90px 90px', gap: 10, padding: '12px 20px', borderBottom: `1px solid rgba(240,236,224,0.05)`, alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 800, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{AGENT_LBL[row.agent] ?? row.agent}</span>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.model}</span>
-                    <Mono>{fmt(row.totalInputTokens)}</Mono>
-                    <Mono>{fmt(row.totalOutputTokens)}</Mono>
-                    <Mono color={cyan}>{fmt(row.totalCacheReadTokens)}</Mono>
-                    <Mono color={coral} bold>{fmtCost(row.totalCostUsd)}</Mono>
-                  </div>
-                ))}
-                <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 90px 90px 90px 90px', gap: 10, padding: '12px 20px', background: 'rgba(240,236,224,0.03)', borderTop: `2px solid rgba(240,236,224,0.1)`, alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 900, color: ink, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</span>
-                  <span />
-                  <Mono bold>{fmt(agg.input)}</Mono>
-                  <Mono bold>{fmt(agg.output)}</Mono>
-                  <Mono color={cyan} bold>{fmt(agg.cacheR)}</Mono>
-                  <Mono color={coral} bold>{fmtCost(totalCost.toString())}</Mono>
-                </div>
-              </div>
-            )}
 
-            {/* Share receipt — only for own profile, inside profile tab */}
-            {isOwn && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={() => setShowShare(true)}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 20px', border: `3px solid ${ink}`, borderRadius: 14, background: pink, color: bg, fontWeight: 900, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', boxShadow: `4px 4px 0 ${ink}`, fontFamily: 'inherit' }}
-                >
-                  ↗ Share your receipt
-                </button>
-              </div>
-            )}
           </div>
         )}
 
@@ -381,29 +475,34 @@ export default function ProfilePage() {
               <div style={{ color: muted, fontFamily: 'ui-monospace, monospace', fontSize: '0.86rem', padding: '40px 0', textAlign: 'center', fontWeight: 600 }}>Loading...</div>
             ) : lb && lb.leaderboard.length > 0 ? (
               <>
-                <div style={{ display: 'grid', gridTemplateColumns: '56px minmax(0,1fr) 100px 100px 90px 100px', gap: 12, padding: '10px 18px', borderBottom: `2px solid rgba(240,236,224,0.08)` }}>
-                  {['Rank', 'User', 'Input', 'Output', 'Cache', 'Cost'].map(h => (
-                    <span key={h} style={{ fontSize: '0.68rem', fontWeight: 900, color: muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</span>
-                  ))}
-                </div>
+                {!isMobile && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '56px minmax(0,1fr) 100px 100px 90px 100px', gap: 12, padding: '10px 18px', borderBottom: `2px solid rgba(240,236,224,0.08)` }}>
+                    {['Rank', 'User', 'Input', 'Output', 'Cache', 'Cost'].map(h => (
+                      <span key={h} style={{ fontSize: '0.68rem', fontWeight: 900, color: muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</span>
+                    ))}
+                  </div>
+                )}
                 {lb.leaderboard.map((entry, i) => {
                   const rank = page * PER_PAGE + i + 1;
                   const isMe = entry.username === username;
-                  const cache = n(entry.totalCacheReadTokens);
+                  const lbCols = isMobile ? '40px minmax(0,1fr) 70px' : '56px minmax(0,1fr) 100px 100px 90px 100px';
                   return (
-                    <a key={entry.username} href={`/${entry.username}`} style={{ display: 'grid', gridTemplateColumns: '56px minmax(0,1fr) 100px 100px 90px 100px', gap: 12, alignItems: 'center', padding: '12px 18px', border: `3px solid ${isMe ? yellow : ink}`, borderRadius: 18, background: isMe ? `radial-gradient(circle at 12% 50%, rgba(255,242,97,0.1), transparent 45%), ${surface}` : surface, boxShadow: isMe ? `5px 5px 0 ${yellow}` : `4px 4px 0 rgba(240,236,224,0.05)`, textDecoration: 'none' }}>
-                      <div style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, border: `3px solid ${ink}`, borderRadius: 11, background: RANK_BG[(rank - 1) % RANK_BG.length], color: bg, fontWeight: 900, fontSize: '0.82rem', boxShadow: `3px 3px 0 ${ink}` }}>#{rank}</div>
+                    <a key={entry.username} href={`/${entry.username}`} style={{ display: 'grid', gridTemplateColumns: lbCols, gap: isMobile ? 8 : 12, alignItems: 'center', padding: isMobile ? '10px 14px' : '12px 18px', border: `3px solid ${isMe ? yellow : ink}`, borderRadius: 18, background: isMe ? `radial-gradient(circle at 12% 50%, rgba(255,242,97,0.1), transparent 45%), ${surface}` : surface, boxShadow: isMe ? `5px 5px 0 ${yellow}` : `4px 4px 0 rgba(240,236,224,0.05)`, textDecoration: 'none' }}>
+                      <div style={{ display: 'grid', placeItems: 'center', width: isMobile ? 32 : 42, height: isMobile ? 32 : 42, border: `3px solid ${ink}`, borderRadius: 11, background: RANK_BG[(rank - 1) % RANK_BG.length], color: bg, fontWeight: 900, fontSize: isMobile ? '0.68rem' : '0.82rem', boxShadow: `3px 3px 0 ${ink}` }}>#{rank}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
-                        <Avatar url={entry.avatarUrl} name={entry.username} size={28} border={`2px solid ${isMe ? yellow : ink}`} />
+                        <Avatar url={entry.avatarUrl} name={entry.username} size={isMobile ? 22 : 28} border={`2px solid ${isMe ? yellow : ink}`} />
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 800, fontSize: '0.88rem', color: isMe ? yellow : ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{entry.username}{isMe ? ' (you)' : ''}</div>
-                          <div style={{ fontSize: '0.68rem', color: muted, fontWeight: 600, marginTop: 1 }}>{fmt(n(entry.totalInputTokens) + n(entry.totalOutputTokens) + n(entry.totalCacheReadTokens))} total tokens</div>
+                          <div style={{ fontWeight: 800, fontSize: isMobile ? '0.78rem' : '0.88rem', color: isMe ? yellow : ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{entry.username}{isMe ? ' (you)' : ''}</div>
+                          {isMobile
+                            ? <div style={{ fontSize: '0.62rem', color: muted, fontWeight: 600, marginTop: 1 }}>{fmt(n(entry.totalInputTokens) + n(entry.totalOutputTokens))} tokens</div>
+                            : <div style={{ fontSize: '0.68rem', color: muted, fontWeight: 600, marginTop: 1 }}>{fmt(n(entry.totalInputTokens) + n(entry.totalOutputTokens) + n(entry.totalCacheReadTokens))} total tokens</div>
+                          }
                         </div>
                       </div>
-                      <Mono>{fmt(entry.totalInputTokens)}</Mono>
-                      <Mono>{fmt(entry.totalOutputTokens)}</Mono>
-                      <Mono color={cyan}>{fmt(cache)}</Mono>
-                      <div style={{ fontWeight: 900, fontSize: '1.1rem', color: RANK_BG[(rank - 1) % RANK_BG.length], fontVariantNumeric: 'tabular-nums' }}>{fmtCost(entry.totalCostUsd)}</div>
+                      {!isMobile && <Mono>{fmt(entry.totalInputTokens)}</Mono>}
+                      {!isMobile && <Mono>{fmt(entry.totalOutputTokens)}</Mono>}
+                      {!isMobile && <Mono color={cyan}>{fmt(n(entry.totalCacheReadTokens))}</Mono>}
+                      <div style={{ fontWeight: 900, fontSize: isMobile ? '0.92rem' : '1.1rem', color: RANK_BG[(rank - 1) % RANK_BG.length], fontVariantNumeric: 'tabular-nums' }}>{fmtCost(entry.totalCostUsd)}</div>
                     </a>
                   );
                 })}
@@ -432,64 +531,61 @@ export default function ProfilePage() {
       {showShare && (
         <div
           onClick={e => { if (e.target === e.currentTarget) setShowShare(false); }}
-          style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(9,8,6,0.88)', backdropFilter: 'blur(10px)', display: 'grid', placeItems: 'center', padding: 20 }}
+          style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(9,8,6,0.85)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 20 }}
         >
-          <div style={{ width: '100%', maxWidth: 520, border: `4px solid ${ink}`, borderRadius: 28, background: surface, boxShadow: `14px 14px 0 ${cyan}`, overflow: 'hidden' }}>
-            {/* Modal header */}
-            <div style={{ background: cyan, borderBottom: `3px solid ${ink}`, padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 900, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: bg }}>
-                ↗ Share your profile{savingTheme ? '  ·  saving...' : ''}
+          <div style={{ width: '100%', maxWidth: isMobile ? '100%' : 480, border: isMobile ? 'none' : `4px solid ${ink}`, borderTop: `4px solid ${ink}`, borderRadius: isMobile ? '24px 24px 0 0' : 24, background: surface, boxShadow: isMobile ? `0 -8px 0 ${cyan}` : `12px 12px 0 ${cyan}`, overflow: 'hidden' }}>
+
+            {/* drag handle on mobile */}
+            {isMobile && (
+              <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
+                <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(240,236,224,0.2)' }} />
+              </div>
+            )}
+
+            {/* header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '12px 20px 0' : '16px 22px 0' }}>
+              <span style={{ fontWeight: 900, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: ink }}>
+                Share receipt{savingTheme ? <span style={{ color: muted, fontWeight: 600 }}> · saving…</span> : ''}
               </span>
-              <button onClick={() => setShowShare(false)} style={{ width: 28, height: 28, border: `2px solid ${bg}`, borderRadius: 8, background: 'rgba(9,8,6,0.15)', color: bg, fontWeight: 900, fontSize: '1rem', cursor: 'pointer', display: 'grid', placeItems: 'center', fontFamily: 'inherit' }}>×</button>
+              <button onClick={() => setShowShare(false)} style={{ width: 30, height: 30, border: `2px solid rgba(240,236,224,0.2)`, borderRadius: 8, background: 'transparent', color: muted, fontWeight: 900, fontSize: '1rem', cursor: 'pointer', display: 'grid', placeItems: 'center', fontFamily: 'inherit' }}>×</button>
             </div>
 
-            <div style={{ padding: '26px 24px', display: 'flex', flexDirection: 'column', gap: 22 }}>
+            <div style={{ padding: isMobile ? '16px 20px 32px' : '20px 22px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
               {/* Theme picker */}
-              <div>
-                <div style={{ fontSize: '0.68rem', fontWeight: 900, color: muted, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>Choose a color theme</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
-                  {SHARE_THEMES.map(t => (
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+                {SHARE_THEMES.map(t => {
+                  const active = shareTheme === t.key;
+                  return (
                     <button
                       key={t.key}
                       onClick={() => handleThemeChange(t.key)}
-                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '10px 6px', border: `3px solid ${shareTheme === t.key ? ink : 'rgba(240,236,224,0.15)'}`, borderRadius: 14, background: shareTheme === t.key ? 'rgba(240,236,224,0.06)' : 'transparent', cursor: 'pointer', boxShadow: shareTheme === t.key ? `4px 4px 0 ${t.accent}` : 'none', transition: 'all 0.12s', fontFamily: 'inherit' }}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '10px 10px 8px', border: `3px solid ${active ? ink : 'rgba(240,236,224,0.12)'}`, borderRadius: 16, background: active ? 'rgba(240,236,224,0.05)' : 'transparent', cursor: 'pointer', boxShadow: active ? `4px 4px 0 ${t.accent}` : 'none', flexShrink: 0, minWidth: 68, fontFamily: 'inherit' }}
                     >
-                      {/* Swatch */}
-                      <div style={{ width: 48, height: 48, borderRadius: 12, background: t.bg, border: `3px solid ${shareTheme === t.key ? ink : 'rgba(240,236,224,0.2)'}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, overflow: 'hidden', position: 'relative' }}>
-                        {/* mini grid lines */}
-                        <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(${t.accent}22 1px, transparent 1px), linear-gradient(90deg, ${t.accent}22 1px, transparent 1px)`, backgroundSize: '12px 12px' }} />
-                        <div style={{ position: 'relative', fontWeight: 900, fontSize: '0.85rem', color: t.accent, lineHeight: 1 }}>A$</div>
-                        <div style={{ position: 'relative', width: 24, height: 3, borderRadius: 2, background: t.accent, opacity: 0.7 }} />
-                        <div style={{ position: 'relative', width: 16, height: 2, borderRadius: 2, background: t.accent, opacity: 0.4 }} />
+                      <div style={{ width: 42, height: 42, borderRadius: 11, background: t.bg, border: `2px solid ${active ? ink : 'rgba(240,236,224,0.18)'}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, overflow: 'hidden', position: 'relative' }}>
+                        <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(${t.accent}20 1px, transparent 1px), linear-gradient(90deg, ${t.accent}20 1px, transparent 1px)`, backgroundSize: '10px 10px' }} />
+                        <div style={{ position: 'relative', fontWeight: 900, fontSize: '0.78rem', color: t.accent }}>A$</div>
+                        <div style={{ position: 'relative', width: 20, height: 2, borderRadius: 2, background: t.accent, opacity: 0.6 }} />
                       </div>
-                      <span style={{ fontSize: '0.68rem', fontWeight: 800, color: shareTheme === t.key ? ink : muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.name}</span>
+                      <span style={{ fontSize: '0.62rem', fontWeight: 800, color: active ? ink : muted, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{t.name}</span>
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
 
-              {/* Preview link */}
-              <div>
-                <div style={{ fontSize: '0.68rem', fontWeight: 900, color: muted, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Your shareable link</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: term, border: `3px solid ${ink}`, borderRadius: 14, padding: '11px 14px', boxShadow: `3px 3px 0 ${ink}` }}>
-                  <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.74rem', fontWeight: 600, color: cyan, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shareUrl()}</span>
-                  <TinyBtn onClick={() => copyText(shareUrl(), 'link')} active={linkCopied}>{linkCopied ? '✓ Copied' : 'Copy'}</TinyBtn>
-                </div>
-              </div>
-
-              {/* Action buttons */}
+              {/* Buttons */}
               <div style={{ display: 'flex', gap: 10 }}>
                 <button
                   onClick={() => copyText(shareUrl(), 'link')}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, border: `3px solid ${ink}`, borderRadius: 14, background: linkCopied ? green : yellow, color: bg, fontWeight: 900, fontSize: '0.85rem', textTransform: 'uppercase', cursor: 'pointer', boxShadow: `5px 5px 0 ${ink}`, letterSpacing: '0.04em', fontFamily: 'inherit', transition: 'background 0.15s' }}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 50, border: `3px solid ${ink}`, borderRadius: 14, background: linkCopied ? green : yellow, color: bg, fontWeight: 900, fontSize: '0.88rem', textTransform: 'uppercase', cursor: 'pointer', boxShadow: `5px 5px 0 ${ink}`, letterSpacing: '0.04em', fontFamily: 'inherit' }}
                 >
-                  {linkCopied ? '✓ Link copied!' : '⎘ Copy link'}
+                  {linkCopied ? '✓ Copied!' : '⎘ Copy link'}
                 </button>
                 <a
                   href={shareUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, padding: '0 18px', border: `3px solid ${ink}`, borderRadius: 14, background: 'transparent', color: ink, fontWeight: 900, fontSize: '0.85rem', textTransform: 'uppercase', cursor: 'pointer', letterSpacing: '0.04em', fontFamily: 'inherit', textDecoration: 'none' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 50, padding: '0 18px', border: `3px solid rgba(240,236,224,0.2)`, borderRadius: 14, background: 'transparent', color: muted, fontWeight: 900, fontSize: '0.88rem', textTransform: 'uppercase', cursor: 'pointer', letterSpacing: '0.04em', fontFamily: 'inherit', textDecoration: 'none', whiteSpace: 'nowrap' }}
                 >
                   ↗ Preview
                 </a>

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useWindowWidth } from '@/lib/use-responsive';
 import Link from 'next/link';
 import Image from 'next/image';
 import api from '@/lib/api';
@@ -57,6 +58,7 @@ export default function PublicProfilePage() {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading,  setLoading]  = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const isMobile = useWindowWidth() < 640;
 
   useEffect(() => {
     api.get<PublicProfile>(`/api/leaderboard/users/${username}?period=all_time`)
@@ -98,10 +100,10 @@ export default function PublicProfilePage() {
   const agents = [...new Set(profile.breakdown.map(r => r.agent))];
 
   return (
-    <div style={{ minHeight: '100dvh', ...gridBg, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px 80px' }}>
+    <div style={{ minHeight: '100dvh', ...gridBg, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: isMobile ? '24px 12px 48px' : '60px 20px 80px' }}>
 
       {/* ── RECEIPT CARD ── */}
-      <div style={{ width: '100%', maxWidth: 640, border: `4px solid ${ink}`, borderRadius: 32, overflow: 'hidden', boxShadow: `16px 16px 0 ${ink}` }}>
+      <div style={{ width: '100%', maxWidth: 640, border: `${isMobile ? 3 : 4}px solid ${ink}`, borderRadius: isMobile ? 20 : 32, overflow: 'hidden', boxShadow: isMobile ? `6px 6px 0 ${ink}` : `16px 16px 0 ${ink}` }}>
 
         {/* Header */}
         <div style={{ background: ink, padding: '13px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -113,8 +115,8 @@ export default function PublicProfilePage() {
         </div>
 
         {/* User row */}
-        <div style={{ background: surface, borderBottom: `3px solid ${ink}`, padding: '24px 26px', display: 'flex', alignItems: 'center', gap: 18 }}>
-          <AvatarBlock url={profile.user.avatarUrl} name={profile.user.username} size={72} accent={ink} bg={theme.bg} />
+        <div style={{ background: surface, borderBottom: `3px solid ${ink}`, padding: isMobile ? '16px 18px' : '24px 26px', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <AvatarBlock url={profile.user.avatarUrl} name={profile.user.username} size={isMobile ? 52 : 72} accent={ink} bg={theme.bg} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 'clamp(1.4rem, 4vw, 2rem)', fontWeight: 900, color: ink, textTransform: 'uppercase', lineHeight: 0.95, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               @{profile.user.username}
@@ -163,23 +165,44 @@ export default function PublicProfilePage() {
           </div>
         )}
 
-        {/* Breakdown table */}
+        {/* Breakdown */}
         {profile.breakdown.length > 0 && (
           <div style={{ background: term }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px 80px 80px', gap: 8, padding: '10px 20px', borderBottom: `2px solid ${inkDim}` }}>
-              {['Agent', 'Model', 'Input', 'Output', 'Cost'].map(h => (
-                <span key={h} style={{ fontSize: '0.62rem', fontWeight: 900, color: muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</span>
-              ))}
-            </div>
-            {profile.breakdown.map((row, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px 80px 80px', gap: 8, padding: '10px 20px', borderBottom: `1px solid ${inkDim}`, alignItems: 'center' }}>
-                <span style={{ fontSize: '0.74rem', fontWeight: 800, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{AGENT_LBL[row.agent] ?? row.agent}</span>
-                <span style={{ fontSize: '0.68rem', fontWeight: 600, color: muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.model}</span>
-                <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.72rem', fontWeight: 600, color: inkSoft, fontVariantNumeric: 'tabular-nums' }}>{fmt(row.totalInputTokens)}</span>
-                <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.72rem', fontWeight: 600, color: inkSoft, fontVariantNumeric: 'tabular-nums' }}>{fmt(row.totalOutputTokens)}</span>
-                <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.72rem', fontWeight: 700, color: ink, fontVariantNumeric: 'tabular-nums' }}>{fmtCost(row.totalCostUsd)}</span>
+            {isMobile ? (
+              /* stacked cards on mobile */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {profile.breakdown.map((row, i) => (
+                  <div key={i} style={{ padding: '14px 20px', borderBottom: `1px solid ${inkDim}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 800, color: ink }}>{AGENT_LBL[row.agent] ?? row.agent}</div>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 600, color: muted, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.model}</div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '1rem', fontWeight: 900, color: ink, fontVariantNumeric: 'tabular-nums' }}>{fmtCost(row.totalCostUsd)}</div>
+                      <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.68rem', fontWeight: 600, color: muted, marginTop: 2 }}>{fmt(n(row.totalInputTokens) + n(row.totalOutputTokens))} tokens</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              /* table on desktop */
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 70px 70px 70px', gap: 8, padding: '10px 20px', borderBottom: `2px solid ${inkDim}` }}>
+                  {['Agent', 'Model', 'Input', 'Output', 'Cost'].map(h => (
+                    <span key={h} style={{ fontSize: '0.62rem', fontWeight: 900, color: muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</span>
+                  ))}
+                </div>
+                {profile.breakdown.map((row, i) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 70px 70px 70px', gap: 8, padding: '10px 20px', borderBottom: `1px solid ${inkDim}`, alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.74rem', fontWeight: 800, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{AGENT_LBL[row.agent] ?? row.agent}</span>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 600, color: muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.model}</span>
+                    <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.72rem', fontWeight: 600, color: inkSoft, fontVariantNumeric: 'tabular-nums' }}>{fmt(row.totalInputTokens)}</span>
+                    <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.72rem', fontWeight: 600, color: inkSoft, fontVariantNumeric: 'tabular-nums' }}>{fmt(row.totalOutputTokens)}</span>
+                    <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.72rem', fontWeight: 700, color: ink, fontVariantNumeric: 'tabular-nums' }}>{fmtCost(row.totalCostUsd)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

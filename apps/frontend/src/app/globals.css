@@ -180,12 +180,6 @@
   }
 }
 
-@media (max-width: 560px) {
-  .platforms-grid {
-    grid-template-columns: 1fr !important;
-  }
-}
-
 @media (max-width: 700px) {
   .steps-grid {
     grid-template-columns: 1fr !important;
@@ -196,6 +190,51 @@
   .cta-block {
     padding: 36px 24px !important;
   }
+  /* home page leaderboard rows */
+  .lb-row-cols {
+    grid-template-columns: 44px minmax(0,1fr) 70px !important;
+    gap: 8px !important;
+    padding: 10px 14px !important;
+  }
+  .lb-row-hide {
+    display: none !important;
+  }
+  /* home page hero text */
+  .hero-cta-row {
+    flex-direction: column !important;
+  }
+  .hero-cta-row a {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .platforms-grid {
+    grid-template-columns: 1fr !important;
+  }
+  /* dashboard card padding */
+  .dash-card {
+    padding: 18px 16px !important;
+  }
+  /* public receipt card — tighter shadow on small screens */
+  .receipt-card {
+    border-radius: 20px !important;
+    box-shadow: 6px 6px 0 currentColor !important;
+  }
+}
+
+/* horizontal scroll wrapper for tables */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.table-scroll::-webkit-scrollbar-thumb {
+  background: rgba(240,236,224,0.15);
+  border-radius: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
