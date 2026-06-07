@@ -46,7 +46,7 @@ run().catch((err) => {
   if (err.message === 'KEY_INVALID') {
     console.error('API key is invalid or was regenerated. Run `bunx amibroke init <new-key>` to connect.');
   } else {
-    console.error('Daemon error:', err.message);
+    console.error('Sync error:', err.message);
   }
   process.exit(1);
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -24,18 +24,10 @@ interface PublicProfile {
 }
 interface OwnProfile {
   user: { username: string; avatarUrl: string | null; detectedAgents: string[]; apiKeyPrefix: string | null; publicTheme: string; createdAt: string };
-  daemon: { status: string; lastSyncAt: string | null; message: string; lastSyncedAgents: string[]; nextSyncAt: string | null };
+  lastSyncAt: string | null;
+  lastSyncedAgents: string[];
   totalCostUsd: string | null;
 }
-interface LbEntry {
-  username: string; avatarUrl: string | null;
-  totalCostUsd: string | null; totalInputTokens: string | null;
-  totalOutputTokens: string | null; totalCacheReadTokens: string | null; totalCacheWriteTokens: string | null;
-}
-interface LbResponse { leaderboard: LbEntry[]; total: number; period: string; }
-
-type Tab    = 'profile' | 'leaderboard';
-type Period = 'all_time' | 'monthly' | 'weekly' | 'daily';
 
 // ── design tokens ────────────────────────────────────────
 const ink     = '#f0ece0';
@@ -49,16 +41,7 @@ const coral   = '#ff6464';
 const green   = '#5dff9c';
 const pink    = '#ff7bd4';
 
-const RANK_BG   = [yellow, cyan, green, coral, pink];
 const AGENT_LBL: Record<string, string> = { claude_code: 'Claude Code', codex: 'Codex', opencode: 'OpenCode' };
-const DAEMON_COL: Record<string, string> = { active: green, stale: yellow, inactive: coral, stopped: coral, uninstalled: muted, never_installed: muted };
-const LB_PERIODS: { key: Period; label: string }[] = [
-  { key: 'all_time', label: 'All time' },
-  { key: 'monthly',  label: 'Monthly'  },
-  { key: 'weekly',   label: 'Weekly'   },
-  { key: 'daily',    label: 'Daily'    },
-];
-const PER_PAGE = 20;
 
 // ── share themes ─────────────────────────────────────────
 export const SHARE_THEMES = [
@@ -82,15 +65,16 @@ function fmt(raw: string | null | undefined | number): string {
 function fmtCost(raw: string | null | undefined): string { return `$${n(raw as string).toFixed(2)}`; }
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
-  const h = Math.floor(diff / 3_600_000), m = Math.floor((diff % 3_600_000) / 60_000);
-  return h > 0 ? `${h}h ${m}m ago` : `${m}m ago`;
+  const d = Math.floor(diff / 86_400_000);
+  const h = Math.floor((diff % 86_400_000) / 3_600_000);
+  const m = Math.floor((diff % 3_600_000) / 60_000);
+  const s = Math.floor((diff % 60_000) / 1_000);
+  if (d > 0) return `${d}d ${h}h ago`;
+  if (h > 0) return `${h}h ${m}m ago`;
+  if (m > 0) return `${m}m ago`;
+  return `${s}s ago`;
 }
-function timeUntil(iso: string): string {
-  const diff = new Date(iso).getTime() - Date.now();
-  if (diff <= 0) return 'soon';
-  const h = Math.floor(diff / 3_600_000), m = Math.floor((diff % 3_600_000) / 60_000);
-  return h > 0 ? `in ${h}h ${m}m` : `in ${m}m`;
-}
+
 function aggBreakdown(rows: BreakdownRow[]) {
   return rows.reduce(
     (a, r) => ({ input: a.input + n(r.totalInputTokens), output: a.output + n(r.totalOutputTokens), cacheR: a.cacheR + n(r.totalCacheReadTokens), cacheW: a.cacheW + n(r.totalCacheWriteTokens), cost: a.cost + n(r.totalCostUsd) }),
@@ -105,13 +89,8 @@ export default function ProfilePage() {
 
   const [pub,      setPub]      = useState<PublicProfile | null>(null);
   const [own,      setOwn]      = useState<OwnProfile | null>(null);
-  const [tab,      setTab]      = useState<Tab>('profile');
-  const [lbPeriod, setLbPeriod] = useState<Period>('all_time');
-  const [lb,       setLb]       = useState<LbResponse | null>(null);
-  const [page,     setPage]     = useState(0);
   const [init,     setInit]     = useState(true);
   const [fetchErr, setFetchErr] = useState<'not_found' | 'private' | null>(null);
-  const [lbLoading, setLbLoading] = useState(false);
   const [showKey,   setShowKey]   = useState(false);
   const [genning,   setGenning]   = useState(false);
   const [keyCopied, setKeyCopied] = useState(false);
@@ -119,11 +98,9 @@ export default function ProfilePage() {
   const [shareTheme, setShareTheme] = useState<ShareTheme>('noir');
   const [linkCopied, setLinkCopied] = useState(false);
   const [savingTheme, setSavingTheme] = useState(false);
-  const [uninstallOS, setUninstallOS] = useState<'macos' | 'linux'>('macos');
-  const [uninstallCopied, setUninstallCopied] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [uninstallOpen, setUninstallOpen] = useState(false);
   const [setupCmdCopied, setSetupCmdCopied] = useState(false);
+  const [uninstallCopied, setUninstallCopied] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
   const [storedKey, setStoredKey] = useState<string | null>(null);
 
   const w = useWindowWidth();
@@ -157,17 +134,6 @@ export default function ProfilePage() {
     })();
   }, [username, router]);
 
-  const fetchLb = useCallback(async () => {
-    setLbLoading(true);
-    try {
-      const r = await api.get<LbResponse>(`/api/leaderboard?limit=${PER_PAGE}&offset=${page * PER_PAGE}&period=${lbPeriod}`);
-      setLb(r.data);
-    } finally { setLbLoading(false); }
-  }, [page, lbPeriod]);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { if (tab === 'leaderboard') fetchLb(); }, [tab, fetchLb]);
-
   async function handleGenKey() {
     setGenning(true);
     try {
@@ -184,21 +150,8 @@ export default function ProfilePage() {
     else { setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }
   }
 
-  const UNINSTALL_CMDS = {
-    macos: [
-      'launchctl unload ~/Library/LaunchAgents/dev.amibroke.daemon.plist',
-      'rm ~/Library/LaunchAgents/dev.amibroke.daemon.plist',
-      'rm -rf ~/.config/amibroke',
-    ],
-    linux: [
-      'systemctl --user disable --now amibroke.timer',
-      'rm ~/.config/systemd/user/amibroke.service ~/.config/systemd/user/amibroke.timer',
-      'rm -rf ~/.config/amibroke',
-    ],
-  };
-
   async function copyUninstall() {
-    await navigator.clipboard.writeText(UNINSTALL_CMDS[uninstallOS].join('\n'));
+    await navigator.clipboard.writeText('rm -rf ~/.config/amibroke');
     setUninstallCopied(true);
     setTimeout(() => setUninstallCopied(false), 2000);
   }
@@ -239,8 +192,6 @@ export default function ProfilePage() {
 
   const agg = aggBreakdown(pub.breakdown);
   const totalCost = isOwn && own?.totalCostUsd ? n(own.totalCostUsd) : agg.cost;
-  const totalPages = lb ? Math.ceil(lb.total / PER_PAGE) : 0;
-
   return (
     <>
       {/* ── NAV ── */}
@@ -250,12 +201,17 @@ export default function ProfilePage() {
             <div style={{ display: 'grid', placeItems: 'center', width: 36, height: 36, border: `3px solid ${ink}`, borderRadius: 10, background: yellow, color: bg, fontWeight: 900, fontSize: '0.72rem', boxShadow: `4px 4px 0 ${ink}` }}>A$</div>
             amibroke
           </Link>
-          {isOwn && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, border: `2px solid rgba(240,236,224,0.18)`, borderRadius: 999, padding: '5px 12px 5px 5px', background: surface }}>
-              <Avatar url={pub.user.avatarUrl} name={pub.user.username} size={24} />
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: ink }}>@{pub.user.username}</span>
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Link href="/leaderboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 34, padding: '0 14px', border: `2px solid rgba(240,236,224,0.18)`, borderRadius: 999, background: 'transparent', color: muted, fontWeight: 800, fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.05em', textDecoration: 'none' }}>
+              ★ Leaderboard
+            </Link>
+            {isOwn && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, border: `2px solid rgba(240,236,224,0.18)`, borderRadius: 999, padding: '5px 12px 5px 5px', background: surface }}>
+                <Avatar url={pub.user.avatarUrl} name={pub.user.username} size={24} />
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: ink }}>@{pub.user.username}</span>
+              </div>
+            )}
+          </div>
         </nav>
       </header>
 
@@ -283,27 +239,24 @@ export default function ProfilePage() {
             </div>
           </div>
           {isOwn && (
-            <button
-              onClick={() => setShowShare(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 20px', border: `3px solid ${ink}`, borderRadius: 14, background: pink, color: bg, fontWeight: 900, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', boxShadow: `4px 4px 0 ${ink}`, fontFamily: 'inherit', flexShrink: 0 }}
-            >
-              ↗ Share receipt
-            </button>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setShowSyncModal(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 18px', border: `3px solid ${ink}`, borderRadius: 14, background: cyan, color: bg, fontWeight: 900, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', boxShadow: `4px 4px 0 ${ink}`, fontFamily: 'inherit', flexShrink: 0 }}
+              >
+                ⟳ How to sync
+              </button>
+              <button
+                onClick={() => setShowShare(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 20px', border: `3px solid ${ink}`, borderRadius: 14, background: pink, color: bg, fontWeight: 900, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', boxShadow: `4px 4px 0 ${ink}`, fontFamily: 'inherit', flexShrink: 0 }}
+              >
+                ↗ Share receipt
+              </button>
+            </div>
           )}
         </div>
 
-        {/* ── TABS ── */}
-        <div style={{ display: 'flex', borderBottom: `3px solid rgba(240,236,224,0.1)`, marginBottom: 30 }}>
-          {(['profile', 'leaderboard'] as Tab[]).map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{ minHeight: 44, padding: '0 22px', border: 'none', borderBottom: `3px solid ${tab === t ? yellow : 'transparent'}`, background: 'transparent', color: tab === t ? ink : muted, fontWeight: 900, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', marginBottom: -3, fontFamily: 'inherit' }}>
-              {t}
-            </button>
-          ))}
-        </div>
-
-        {/* ══════════════════════ PROFILE TAB ══════════════════════ */}
-        {tab === 'profile' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, paddingBottom: 80 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, paddingBottom: 80 }}>
 
             {/* Stats row */}
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 2 : 4}, minmax(0,1fr))`, gap: 12 }}>
@@ -355,7 +308,7 @@ export default function ProfilePage() {
                   {/* header row */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                     <Pill bg={yellow} text="🔑 API key" />
-                    <Pill bg={DAEMON_COL[own.daemon.status] ?? muted} text={`● Daemon · ${own.daemon.status.replace(/_/g, ' ')}`} />
+                    {own.lastSyncAt && <Pill bg={green} text={`● synced ${timeAgo(own.lastSyncAt)}`} />}
                   </div>
 
                   {/* key display */}
@@ -370,162 +323,88 @@ export default function ProfilePage() {
                     </button>
                   )}
 
-                  {/* daemon inline row */}
-                  {own.daemon.lastSyncAt ? (
-                    <div style={{ background: term, border: `2px solid rgba(240,236,224,0.07)`, borderRadius: 12, padding: '10px 14px', fontFamily: 'ui-monospace, monospace', fontSize: '0.75rem', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <KVRow l="last sync" r={timeAgo(own.daemon.lastSyncAt)} rColor={ink} />
-                      {own.daemon.nextSyncAt && <KVRow l="next sync" r={timeUntil(own.daemon.nextSyncAt)} rColor={green} />}
-                      {own.daemon.lastSyncedAgents.length > 0 && <KVRow l="last synced agents" r={own.daemon.lastSyncedAgents.map(a => AGENT_LBL[a] ?? a).join(', ')} rColor={cyan} />}
-                    </div>
-                  ) : (
-                    <p style={{ fontSize: '0.8rem', fontWeight: 600, color: muted, lineHeight: 1.5, margin: 0 }}>{own.daemon.message}</p>
-                  )}
+                  {/* last sync row */}
+                  <div style={{ background: term, border: `2px solid rgba(240,236,224,0.07)`, borderRadius: 12, padding: '10px 14px', fontFamily: 'ui-monospace, monospace', fontSize: '0.75rem', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {own.lastSyncAt
+                      ? <KVRow l="last sync" r={timeAgo(own.lastSyncAt)} rColor={ink} />
+                      : <KVRow l="last sync" r="never — run bunx amibroke sync" rColor={muted} />
+                    }
+                    {own.lastSyncedAgents.length > 0 && <KVRow l="last synced agents" r={own.lastSyncedAgents.map(a => AGENT_LBL[a] ?? a).join(', ')} rColor={cyan} />}
+                  </div>
                 </div>
 
-                {/* ── SETUP & HELP accordion ── */}
-                <div style={{ border: `3px solid rgba(240,236,224,0.14)`, borderRadius: 18, background: surface, overflow: 'hidden' }}>
-                  <button
-                    onClick={() => setHelpOpen(v => !v)}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', border: 'none', background: 'transparent', color: ink, fontWeight: 800, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    <span>📦 Setup &amp; help</span>
-                    <span style={{ color: muted, fontSize: '0.8rem', fontWeight: 700, transition: 'transform 0.15s', display: 'inline-block', transform: helpOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
-                  </button>
-                  {helpOpen && (
-                    <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 14, borderTop: `2px solid rgba(240,236,224,0.07)` }}>
-                      <p style={{ fontSize: '0.8rem', fontWeight: 600, color: muted, lineHeight: 1.55, margin: '14px 0 0' }}>
-                        Install the CLI and paste your key to start tracking. macOS &amp; Linux only.
-                      </p>
-                      <div style={{ background: term, border: `2px solid rgba(240,236,224,0.08)`, borderRadius: 14, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                          <span style={{ color: green, fontFamily: 'ui-monospace, monospace', fontSize: '0.74rem', fontWeight: 700, flexShrink: 0, paddingTop: 1 }}>$</span>
-                          <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.76rem', fontWeight: 600, color: ink, flex: 1, wordBreak: 'break-all' }}>
-                            bunx amibroke init{' '}
-                            <span style={{ color: yellow }}>{storedKey ?? '<your-key>'}</span>
-                          </span>
-                          <TinyBtn onClick={copySetupCmd} active={setupCmdCopied}>{setupCmdCopied ? '✓' : 'Copy'}</TinyBtn>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* ── UNINSTALL accordion ── */}
-                <div style={{ border: `3px solid rgba(240,236,224,0.14)`, borderRadius: 18, background: surface, overflow: 'hidden' }}>
-                  <button
-                    onClick={() => setUninstallOpen(v => !v)}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', border: 'none', background: 'transparent', color: muted, fontWeight: 800, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    <span>🗑 Uninstall / stop tracking</span>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700, transition: 'transform 0.15s', display: 'inline-block', transform: uninstallOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
-                  </button>
-                  {uninstallOpen && (
-                    <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 14, borderTop: `2px solid rgba(240,236,224,0.07)` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginTop: 14 }}>
-                        <p style={{ fontSize: '0.8rem', fontWeight: 600, color: muted, lineHeight: 1.5, margin: 0 }}>
-                          Stops the daemon and removes local config. Your account and data on amibroke.dev are unaffected.
-                        </p>
-                        <div style={{ display: 'flex', border: `2px solid rgba(240,236,224,0.18)`, borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}>
-                          {(['macos', 'linux'] as const).map(os => (
-                            <button key={os} onClick={() => setUninstallOS(os)} style={{ minHeight: 28, padding: '0 12px', border: 'none', background: uninstallOS === os ? ink : 'transparent', color: uninstallOS === os ? bg : muted, fontWeight: 800, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', fontFamily: 'inherit' }}>
-                              {os === 'macos' ? 'macOS' : 'Linux'}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <div style={{ background: term, border: `2px solid rgba(240,236,224,0.08)`, borderRadius: 14, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {UNINSTALL_CMDS[uninstallOS].map((cmd, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ color: coral, fontFamily: 'ui-monospace, monospace', fontSize: '0.74rem', fontWeight: 700, flexShrink: 0 }}>$</span>
-                            <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.74rem', fontWeight: 600, color: ink, flex: 1, wordBreak: 'break-all' }}>{cmd}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 600, color: muted }}>
-                          Config at <span style={{ fontFamily: 'ui-monospace, monospace', color: cyan }}>~/.config/amibroke/</span>
-                        </span>
-                        <TinyBtn onClick={copyUninstall} active={uninstallCopied}>{uninstallCopied ? '✓ Copied' : 'Copy all'}</TinyBtn>
-                      </div>
-                    </div>
-                  )}
-                </div>
 
               </div>
             )}
 
 
           </div>
-        )}
+      </section>
 
-        {/* ══════════════════════ LEADERBOARD TAB ══════════════════════ */}
-        {tab === 'leaderboard' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 80 }}>
-            {/* Period filter */}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              {LB_PERIODS.map(({ key, label }) => (
-                <button key={key} onClick={() => { setLbPeriod(key); setPage(0); }} style={{ ...periodPill, border: `3px solid ${lbPeriod === key ? ink : 'rgba(240,236,224,0.18)'}`, background: lbPeriod === key ? yellow : 'transparent', color: lbPeriod === key ? bg : muted, boxShadow: lbPeriod === key ? `3px 3px 0 ${ink}` : 'none' }}>
-                  {label}
-                </button>
-              ))}
-              {lb && <span style={{ marginLeft: 'auto', fontSize: '0.74rem', fontWeight: 600, color: muted }}>{lb.total} total</span>}
+      {/* ══════════════════════ SYNC MODAL ══════════════════════ */}
+      {showSyncModal && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setShowSyncModal(false); }}
+          style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(9,8,6,0.85)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 20 }}
+        >
+          <div style={{ width: '100%', maxWidth: isMobile ? '100%' : 520, border: isMobile ? 'none' : `4px solid ${ink}`, borderTop: `4px solid ${ink}`, borderRadius: isMobile ? '24px 24px 0 0' : 24, background: surface, boxShadow: isMobile ? `0 -8px 0 ${cyan}` : `12px 12px 0 ${cyan}`, overflow: 'hidden' }}>
+
+            {isMobile && (
+              <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
+                <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(240,236,224,0.2)' }} />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '12px 20px 0' : '18px 22px 0' }}>
+              <span style={{ fontWeight: 900, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: ink }}>⟳ How to sync</span>
+              <button onClick={() => setShowSyncModal(false)} style={{ width: 30, height: 30, border: `2px solid rgba(240,236,224,0.2)`, borderRadius: 8, background: 'transparent', color: muted, fontWeight: 900, fontSize: '1rem', cursor: 'pointer', display: 'grid', placeItems: 'center', fontFamily: 'inherit' }}>×</button>
             </div>
 
-            {lbLoading ? (
-              <div style={{ color: muted, fontFamily: 'ui-monospace, monospace', fontSize: '0.86rem', padding: '40px 0', textAlign: 'center', fontWeight: 600 }}>Loading...</div>
-            ) : lb && lb.leaderboard.length > 0 ? (
-              <>
-                {!isMobile && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '56px minmax(0,1fr) 100px 100px 90px 100px', gap: 12, padding: '10px 18px', borderBottom: `2px solid rgba(240,236,224,0.08)` }}>
-                    {['Rank', 'User', 'Input', 'Output', 'Cache', 'Cost'].map(h => (
-                      <span key={h} style={{ fontSize: '0.68rem', fontWeight: 900, color: muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</span>
-                    ))}
-                  </div>
-                )}
-                {lb.leaderboard.map((entry, i) => {
-                  const rank = page * PER_PAGE + i + 1;
-                  const isMe = entry.username === username;
-                  const lbCols = isMobile ? '40px minmax(0,1fr) 70px' : '56px minmax(0,1fr) 100px 100px 90px 100px';
-                  return (
-                    <a key={entry.username} href={`/${entry.username}`} style={{ display: 'grid', gridTemplateColumns: lbCols, gap: isMobile ? 8 : 12, alignItems: 'center', padding: isMobile ? '10px 14px' : '12px 18px', border: `3px solid ${isMe ? yellow : ink}`, borderRadius: 18, background: isMe ? `radial-gradient(circle at 12% 50%, rgba(255,242,97,0.1), transparent 45%), ${surface}` : surface, boxShadow: isMe ? `5px 5px 0 ${yellow}` : `4px 4px 0 rgba(240,236,224,0.05)`, textDecoration: 'none' }}>
-                      <div style={{ display: 'grid', placeItems: 'center', width: isMobile ? 32 : 42, height: isMobile ? 32 : 42, border: `3px solid ${ink}`, borderRadius: 11, background: RANK_BG[(rank - 1) % RANK_BG.length], color: bg, fontWeight: 900, fontSize: isMobile ? '0.68rem' : '0.82rem', boxShadow: `3px 3px 0 ${ink}` }}>#{rank}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
-                        <Avatar url={entry.avatarUrl} name={entry.username} size={isMobile ? 22 : 28} border={`2px solid ${isMe ? yellow : ink}`} />
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 800, fontSize: isMobile ? '0.78rem' : '0.88rem', color: isMe ? yellow : ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{entry.username}{isMe ? ' (you)' : ''}</div>
-                          {isMobile
-                            ? <div style={{ fontSize: '0.62rem', color: muted, fontWeight: 600, marginTop: 1 }}>{fmt(n(entry.totalInputTokens) + n(entry.totalOutputTokens))} tokens</div>
-                            : <div style={{ fontSize: '0.68rem', color: muted, fontWeight: 600, marginTop: 1 }}>{fmt(n(entry.totalInputTokens) + n(entry.totalOutputTokens) + n(entry.totalCacheReadTokens))} total tokens</div>
-                          }
-                        </div>
-                      </div>
-                      {!isMobile && <Mono>{fmt(entry.totalInputTokens)}</Mono>}
-                      {!isMobile && <Mono>{fmt(entry.totalOutputTokens)}</Mono>}
-                      {!isMobile && <Mono color={cyan}>{fmt(n(entry.totalCacheReadTokens))}</Mono>}
-                      <div style={{ fontWeight: 900, fontSize: isMobile ? '0.92rem' : '1.1rem', color: RANK_BG[(rank - 1) % RANK_BG.length], fontVariantNumeric: 'tabular-nums' }}>{fmtCost(entry.totalCostUsd)}</div>
-                    </a>
-                  );
-                })}
-                {totalPages > 1 && (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, border: `3px solid ${ink}`, borderRadius: 18, background: surface, padding: '12px 16px', boxShadow: `4px 4px 0 rgba(240,236,224,0.06)` }}>
-                    <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} style={{ ...pagBtn, opacity: page === 0 ? 0.35 : 1, cursor: page === 0 ? 'not-allowed' : 'pointer' }}>← Prev</button>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
-                      {buildPageNums(page, totalPages).map((p, idx) =>
-                        typeof p === 'number'
-                          ? <button key={idx} onClick={() => setPage(p)} style={{ ...pageNumBtn, border: `3px solid ${p === page ? ink : 'rgba(240,236,224,0.18)'}`, background: p === page ? yellow : 'transparent', color: p === page ? bg : muted }}>{p + 1}</button>
-                          : <span key={idx} style={{ width: 32, display: 'grid', placeItems: 'center', color: muted, fontSize: '0.82rem' }}>…</span>
-                      )}
-                    </div>
-                    <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1} style={{ ...pagBtn, background: page >= totalPages - 1 ? 'transparent' : coral, color: page >= totalPages - 1 ? muted : bg, border: `3px solid ${page >= totalPages - 1 ? 'rgba(240,236,224,0.18)' : ink}`, opacity: page >= totalPages - 1 ? 0.35 : 1, cursor: page >= totalPages - 1 ? 'not-allowed' : 'pointer' }}>Next →</button>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div style={{ color: muted, fontWeight: 600, fontSize: '0.9rem', padding: '48px 0', textAlign: 'center' }}>No data for this period yet.</div>
-            )}
+            <div style={{ padding: isMobile ? '16px 20px 36px' : '20px 22px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+              {/* Step 1 — init */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 900, color: muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Step 1 — install &amp; authenticate</span>
+                <div style={{ background: term, border: `2px solid rgba(240,236,224,0.08)`, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <span style={{ color: green, fontFamily: 'ui-monospace, monospace', fontSize: '0.74rem', fontWeight: 700, flexShrink: 0, paddingTop: 2 }}>$</span>
+                  <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.76rem', fontWeight: 600, color: ink, flex: 1, wordBreak: 'break-all', lineHeight: 1.5 }}>
+                    bunx amibroke init{' '}
+                    <span style={{ color: yellow }}>{storedKey ?? '<your-key>'}</span>
+                  </span>
+                  <TinyBtn onClick={copySetupCmd} active={setupCmdCopied}>{setupCmdCopied ? '✓' : 'Copy'}</TinyBtn>
+                </div>
+              </div>
+
+              {/* Step 2 — sync */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 900, color: muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Step 2 — sync anytime</span>
+                <div style={{ background: term, border: `2px solid rgba(240,236,224,0.08)`, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ color: cyan, fontFamily: 'ui-monospace, monospace', fontSize: '0.74rem', fontWeight: 700, flexShrink: 0 }}>$</span>
+                  <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.76rem', fontWeight: 600, color: ink, flex: 1 }}>bunx amibroke sync</span>
+                  <TinyBtn onClick={async () => { await navigator.clipboard.writeText('bunx amibroke sync'); }}>Copy</TinyBtn>
+                </div>
+                <p style={{ fontSize: '0.72rem', color: muted, fontWeight: 600, margin: 0, lineHeight: 1.5 }}>
+                  Run anytime to push your latest data — shows up on your profile and the global leaderboard.
+                </p>
+              </div>
+
+              {/* Uninstall */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 4, borderTop: `2px solid rgba(240,236,224,0.07)` }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 900, color: coral, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Stop tracking / uninstall</span>
+                <div style={{ background: term, border: `2px solid rgba(240,236,224,0.08)`, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ color: coral, fontFamily: 'ui-monospace, monospace', fontSize: '0.74rem', fontWeight: 700, flexShrink: 0 }}>$</span>
+                  <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.76rem', fontWeight: 600, color: ink, flex: 1, wordBreak: 'break-all' }}>rm -rf ~/.config/amibroke</span>
+                  <TinyBtn onClick={copyUninstall} active={uninstallCopied}>{uninstallCopied ? '✓' : 'Copy'}</TinyBtn>
+                </div>
+                <p style={{ fontSize: '0.72rem', color: muted, fontWeight: 600, margin: 0, lineHeight: 1.5 }}>
+                  Removes local config and auth only — your account and data on amibroke.dev are unaffected.
+                </p>
+              </div>
+
+            </div>
           </div>
-        )}
-      </section>
+        </div>
+      )}
 
       {/* ══════════════════════ SHARE MODAL ══════════════════════ */}
       {showShare && (
@@ -598,18 +477,6 @@ export default function ProfilePage() {
   );
 }
 
-// ── helpers ──────────────────────────────────────────────
-function buildPageNums(current: number, total: number): (number | '...')[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i);
-  const pages: (number | '...')[] = [];
-  const add = (p: number | '...') => { if (pages[pages.length - 1] !== p) pages.push(p); };
-  add(0);
-  if (current > 2) add('...');
-  for (let p = Math.max(1, current - 1); p <= Math.min(total - 2, current + 1); p++) add(p);
-  if (current < total - 3) add('...');
-  add(total - 1);
-  return pages;
-}
 
 // ── sub-components ────────────────────────────────────────
 function Loading() {
@@ -655,7 +522,3 @@ function KVRow({ l, r, rColor }: { l: string; r: string; rColor: string }) {
   return <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#8c8278' }}>{l}</span><span style={{ color: rColor }}>{r}</span></div>;
 }
 
-// ── shared styles ─────────────────────────────────────────
-const periodPill: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', minHeight: 36, padding: '0 15px', borderRadius: 999, fontWeight: 900, fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s' };
-const pagBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 36, padding: '0 14px', border: '3px solid #f0ece0', borderRadius: 12, fontWeight: 900, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'inherit' };
-const pageNumBtn: React.CSSProperties = { width: 34, height: 34, borderRadius: 10, fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' };

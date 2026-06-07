@@ -85,7 +85,7 @@ export default function PublicProfilePage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', background: '#0f0d0b', backgroundImage: `linear-gradient(rgba(255,242,97,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,242,97,0.04) 1px, transparent 1px)`, backgroundSize: '40px 40px' }}>
+      <div style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', backgroundColor: '#0f0d0b', backgroundImage: `linear-gradient(rgba(255,242,97,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,242,97,0.04) 1px, transparent 1px)`, backgroundSize: '40px 40px' }}>
         <span style={{ fontFamily: 'ui-monospace, monospace', color: '#fff261', fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.05em' }}>loading receipt...</span>
       </div>
     );

@@ -1,7 +1,6 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { saveAuth } from './lib/state';
-import { registerDaemon } from './lib/register';
 
 const G = '\x1b[32m'; // green
 const R = '\x1b[31m'; // red
@@ -44,30 +43,24 @@ function printDetection(detected: { key: string; label: string }[]): void {
   console.log('');
 }
 
-function daemonFileExists(): boolean {
-  if (process.platform === 'darwin') {
-    return existsSync(join(HOME, 'Library', 'LaunchAgents', 'dev.amibroke.daemon.plist'));
-  }
-  return existsSync(join(HOME, '.config', 'systemd', 'user', 'amibroke.timer'));
-}
-
 async function init() {
   const apiUrl = process.env.AMIBROKE_API_URL ?? 'https://amibroke-api.vercel.app';
   const token = process.argv[2];
 
   if (!token) {
     console.error(`${R}Usage: bunx amibroke init <token>${X}`);
-    console.error(`${D}Get your token at https://amibroke.dev/dashboard${X}`);
+    console.error(`${D}Get your token at https://amibroke.dev${X}`);
     process.exit(1);
   }
 
   const authExists = existsSync(join(HOME, '.config', 'amibroke', 'auth.json'));
-  if (authExists && daemonFileExists()) {
+  if (authExists) {
     console.log('');
-    console.log(`${G}${B}Already installed.${X}`);
-    console.log(`${D}amibroke is already set up and actively syncing on this machine.${X}`);
+    console.log(`${G}${B}Already set up.${X}`);
+    console.log(`${D}amibroke is already configured on this machine.${X}`);
     console.log('');
-    console.log(`  ${D}To uninstall or reinstall, see:${X}  ${B}https://amibroke.dev${X}`);
+    console.log(`  ${D}To sync:${X}       ${B}bunx amibroke sync${X}`);
+    console.log(`  ${D}To reinstall:${X}  delete ~/.config/amibroke/ and run init again`);
     console.log('');
     process.exit(0);
   }
@@ -99,17 +92,11 @@ async function init() {
 
   await saveAuth({ token, api_url: apiUrl, username: user.username });
 
-  const bunPath = process.execPath;
-  const daemonScript = new URL('./daemon.ts', import.meta.url).pathname;
-
-  process.stdout.write(`Registering daemon${D}...${X}`);
-  await registerDaemon(bunPath, daemonScript);
-  console.log(` ${G}✓${X} done`);
-
   console.log(`\nRunning first sync${D}...${X}`);
-  await import('./daemon');
+  await import('./sync');
 
   console.log(`\n${G}${B}All set!${X} View your stats at ${B}https://amibroke.dev/${user.username}${X}`);
+  console.log(`${D}Run ${X}${B}bunx amibroke sync${X}${D} anytime to update your stats.${X}`);
 }
 
 init().catch((err) => {
