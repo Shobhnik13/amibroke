@@ -117,7 +117,7 @@ export default function LeaderboardPage() {
             ★ Leaderboard
           </div>
           <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.2rem)', fontWeight: 900, color: ink, textTransform: 'uppercase', letterSpacing: '-0.01em', lineHeight: 0.95, margin: 0 }}>
-            Who&apos;s most broke?
+            Who&apos;s spending to make it?
           </h1>
         </div>
 
