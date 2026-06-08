@@ -11,7 +11,7 @@ const X = '\x1b[0m';  // reset
 const HOME = process.env.HOME!;
 
 async function init() {
-  const apiUrl = 'https://amibroke-api.vercel.app';
+  const apiUrl = 'https://api.amigmi.xyz';
   const token = process.argv[3];
 
   if (!token) {
