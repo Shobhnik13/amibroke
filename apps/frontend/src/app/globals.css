@@ -84,7 +84,7 @@
   --chart-5: #ff7bd4;
 }
 
-/* ── amibroke design tokens ───────────────────────── */
+/* ── amigmi design tokens ───────────────────────── */
 :root {
   --nb-bg: #0f0d0b;
   --nb-surface: #1a1714;
@@ -120,6 +120,7 @@
     color: var(--nb-ink);
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     min-height: 100dvh;
+    overflow-x: hidden;
   }
 }
 
@@ -217,10 +218,20 @@
   .dash-card {
     padding: 18px 16px !important;
   }
-  /* public receipt card — tighter shadow on small screens */
+  /* public receipt card — keep strong shadow even on small screens */
   .receipt-card {
-    border-radius: 20px !important;
-    box-shadow: 6px 6px 0 currentColor !important;
+    border-radius: 24px !important;
+  }
+  /* tighter nav padding */
+  .nav-inner { width: calc(100% - 24px) !important; }
+  /* nav: hide word labels, keep icons/logo box */
+  .nav-wordmark { display: none !important; }
+  .nav-star-label { display: none !important; }
+  .nav-lb-label { display: none !important; }
+  .nav-user-label { display: none !important; }
+  /* tighter hero section on very small screens */
+  .hero-section-mobile {
+    padding-top: 20px !important;
   }
 }
 

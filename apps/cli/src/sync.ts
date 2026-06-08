@@ -8,7 +8,7 @@ import { parseCodex } from './parsers/codex';
 async function run() {
   const auth = loadAuth();
   if (!auth) {
-    console.error('No auth found. Run `bunx amibroke init`');
+    console.error('No auth found. Run `bunx amigmi init`');
     process.exit(1);
   }
 
@@ -44,7 +44,7 @@ async function run() {
 
 run().catch((err) => {
   if (err.message === 'KEY_INVALID') {
-    console.error('API key is invalid or was regenerated. Run `bunx amibroke init <new-key>` to connect.');
+    console.error('API key is invalid or was regenerated. Run `bunx amigmi init <new-key>` to connect.');
   } else {
     console.error('Sync error:', err.message);
   }

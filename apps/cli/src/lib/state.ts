@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import type { State, Auth } from '../types';
 
-const CONFIG_DIR = join(process.env.HOME!, '.config', 'amibroke');
+const CONFIG_DIR = join(process.env.HOME!, '.config', 'amigmi');
 const STATE_PATH = join(CONFIG_DIR, 'state.json');
 const AUTH_PATH = join(CONFIG_DIR, 'auth.json');
 

@@ -1,14 +1,25 @@
 {
-  "name": "amibroke",
+  "name": "amigmi",
   "version": "0.0.1",
+  "description": "Track your AI coding tool spend and compete on the global leaderboard",
+  "license": "MIT",
+  "author": "Shobhnik13",
+  "keywords": ["ai", "claude", "codex", "opencode", "cli", "spend", "tokens", "leaderboard"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Shobhnik13/amigmi"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
   "bin": {
-    "amibroke": "./src/init.ts"
+    "amigmi": "./src/index.ts"
   },
   "files": [
     "src/"
   ],
   "scripts": {
-    "dev": "bun run src/init.ts"
+    "dev": "bun run src/index.ts"
   },
   "dependencies": {},
   "devDependencies": {

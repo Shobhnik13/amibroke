@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "amibroke.dev",
+  title: "amigmi.xyz",
   description: "Track your AI coding tool spend",
 };
 

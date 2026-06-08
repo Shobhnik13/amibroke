@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 const GITHUB_AUTH_URL = `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/api/auth/github`;
 
 export const metadata: Metadata = {
-  title: "amibroke.dev — Track your AI coding spend",
+  title: "amigmi.xyz — Track your AI coding spend",
   description:
     "Track your AI coding tool spend and compete on the global leaderboard.",
 };
@@ -38,7 +38,7 @@ const STEPS = [
     color: yellow,
     title: "Install in 30 seconds",
     body: "Run one command. Paste your key. The CLI auto-detects your AI coding tools.",
-    snippet: "$ bunx amibroke init <key>",
+    snippet: "$ bunx amigmi init <key>",
     snippetColor: yellow,
   },
   {
@@ -46,7 +46,7 @@ const STEPS = [
     color: cyan,
     title: "Sync on demand",
     body: "Run one command whenever you want to push your latest usage. No background process, no overhead.",
-    snippet: "$ bunx amibroke sync",
+    snippet: "$ bunx amigmi sync",
     snippetColor: cyan,
   },
   {
@@ -75,6 +75,7 @@ export default function HomePage() {
         }}
       >
         <nav
+          className="nav-inner"
           style={{
             display: "flex",
             alignItems: "center",
@@ -115,21 +116,21 @@ export default function HomePage() {
             >
               A$
             </div>
-            amibroke
+            <span className="nav-wordmark">amigmi</span>
           </div>
 
           {/* Nav CTAs */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <a
-              href="https://github.com/Shobhnik13/amibroke"
+              href="https://github.com/Shobhnik13/amigmi"
               target="_blank"
               rel="noopener noreferrer"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 7,
-                minHeight: 40,
-                padding: "0 14px",
+                minHeight: 38,
+                padding: "0 12px",
                 border: `2px solid rgba(240,236,224,0.22)`,
                 borderRadius: 999,
                 background: "transparent",
@@ -139,10 +140,11 @@ export default function HomePage() {
                 textTransform: "uppercase",
                 textDecoration: "none",
                 letterSpacing: "0.04em",
+                flexShrink: 0,
               }}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
-              Star
+              <span className="nav-star-label">Star</span>
             </a>
             <a
               href={GITHUB_AUTH_URL}
@@ -150,8 +152,8 @@ export default function HomePage() {
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 8,
-                minHeight: 40,
-                padding: "0 16px",
+                minHeight: 38,
+                padding: "0 14px",
                 border: `3px solid ${ink}`,
                 borderRadius: 999,
                 background: coral,
@@ -162,6 +164,8 @@ export default function HomePage() {
                 textDecoration: "none",
                 boxShadow: `4px 4px 0 ${ink}`,
                 letterSpacing: "0.04em",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
               }}
             >
               Get your key →
@@ -381,7 +385,7 @@ export default function HomePage() {
                     color: muted,
                   }}
                 >
-                  ~/amibroke
+                  ~/amigmi
                 </span>
               </div>
 
@@ -399,7 +403,7 @@ export default function HomePage() {
                 {/* Command line */}
                 <div style={{ display: "flex", gap: 8, marginBottom: 3 }}>
                   <span style={{ color: green, fontWeight: 700 }}>$</span>
-                  <span style={{ color: ink }}>bunx amibroke sync</span>
+                  <span style={{ color: ink }}>bunx amigmi sync</span>
                 </div>
                 <div style={{ color: green, fontWeight: 700, marginBottom: 20 }}>
                   ✓ Synced 247 records · 2.3M tokens
@@ -675,7 +679,7 @@ export default function HomePage() {
             >
               <span style={{ color: green, fontFamily: "ui-monospace, monospace", fontSize: "0.72rem", fontWeight: 700 }}>$</span>
               <span style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.74rem", fontWeight: 600, color: ink }}>
-                bunx amibroke init <span style={{ color: yellow }}>&lt;your-key&gt;</span>
+                bunx amigmi init <span style={{ color: yellow }}>&lt;your-key&gt;</span>
               </span>
             </div>
             <p style={{ fontSize: "0.82rem", color: muted, fontWeight: 600, margin: 0, lineHeight: 1.6 }}>
@@ -740,7 +744,7 @@ export default function HomePage() {
             >
               <span style={{ color: green, fontFamily: "ui-monospace, monospace", fontSize: "0.72rem", fontWeight: 700 }}>$</span>
               <span style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.74rem", fontWeight: 600, color: ink }}>
-                bunx amibroke sync
+                bunx amigmi sync
               </span>
             </div>
             <p style={{ fontSize: "0.82rem", color: muted, fontWeight: 600, margin: 0, lineHeight: 1.6 }}>
@@ -830,6 +834,14 @@ export default function HomePage() {
             <span style={{ fontWeight: 900, fontSize: "0.82rem", color: ink, textAlign: "center", lineHeight: 1.2 }}>OpenCode</span>
           </div>
 
+          {/* More coming soon */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, border: `3px dashed rgba(240,236,224,0.25)`, borderRadius: 18, background: "transparent", padding: "18px 20px", minWidth: 110 }}>
+            <div style={{ display: "grid", placeItems: "center", width: 44, height: 44, borderRadius: 12, background: "rgba(240,236,224,0.05)", border: `2px dashed rgba(240,236,224,0.2)` }}>
+              <span style={{ fontSize: "1.4rem", color: muted, lineHeight: 1 }}>+</span>
+            </div>
+            <span style={{ fontWeight: 700, fontSize: "0.75rem", color: muted, textAlign: "center", lineHeight: 1.3 }}>More coming soon</span>
+          </div>
+
         </div>
       </section>
 
@@ -878,7 +890,7 @@ export default function HomePage() {
           >
             A$
           </div>
-          amibroke.dev
+          amigmi.xyz
         </div>
         <div
           style={{

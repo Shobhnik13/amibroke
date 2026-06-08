@@ -23,7 +23,7 @@ interface PublicProfile {
   period: string;
 }
 interface OwnProfile {
-  user: { username: string; avatarUrl: string | null; detectedAgents: string[]; apiKeyPrefix: string | null; publicTheme: string; createdAt: string };
+  user: { username: string; avatarUrl: string | null; apiKeyPrefix: string | null; publicTheme: string; createdAt: string };
   lastSyncAt: string | null;
   lastSyncedAgents: string[];
   totalCostUsd: string | null;
@@ -151,13 +151,13 @@ export default function ProfilePage() {
   }
 
   async function copyUninstall() {
-    await navigator.clipboard.writeText('rm -rf ~/.config/amibroke');
+    await navigator.clipboard.writeText('rm -rf ~/.config/amigmi');
     setUninstallCopied(true);
     setTimeout(() => setUninstallCopied(false), 2000);
   }
 
   async function copySetupCmd() {
-    const cmd = storedKey ? `bunx amibroke init ${storedKey}` : 'bunx amibroke init <your-key>';
+    const cmd = storedKey ? `bunx amigmi init ${storedKey}` : 'bunx amigmi init <your-key>';
     await navigator.clipboard.writeText(cmd);
     setSetupCmdCopied(true);
     setTimeout(() => setSetupCmdCopied(false), 2000);
@@ -170,7 +170,7 @@ export default function ProfilePage() {
   }
 
   function shareUrl() {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://amibroke.dev';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://amigmi.xyz';
     return `${origin}/public/${username}`;
   }
 
@@ -182,7 +182,7 @@ export default function ProfilePage() {
           {fetchErr === 'private' ? 'Private profile' : `@${username} not found`}
         </div>
         <p style={{ color: '#8c8278', fontWeight: 600, fontSize: '0.9rem', margin: 0 }}>
-          {fetchErr === 'private' ? 'This profile is set to private.' : "This user doesn't exist on amibroke.dev."}
+          {fetchErr === 'private' ? 'This profile is set to private.' : "This user doesn't exist on amigmi.xyz."}
         </p>
         <Link href="/" style={{ color: '#fff261', fontWeight: 700, fontSize: '0.85rem' }}>← Back to home</Link>
       </div>
@@ -196,19 +196,19 @@ export default function ProfilePage() {
     <>
       {/* ── NAV ── */}
       <header style={{ position: 'sticky', top: 0, zIndex: 50, background: `${bg}e0`, backdropFilter: 'blur(14px)', borderBottom: `1px solid rgba(240,236,224,0.07)` }}>
-        <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 'min(1180px, calc(100% - 40px))', margin: '0 auto', padding: '16px 0' }}>
+        <nav className="nav-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 'min(1180px, calc(100% - 40px))', margin: '0 auto', padding: '16px 0' }}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 900, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: ink, textDecoration: 'none' }}>
-            <div style={{ display: 'grid', placeItems: 'center', width: 36, height: 36, border: `3px solid ${ink}`, borderRadius: 10, background: yellow, color: bg, fontWeight: 900, fontSize: '0.72rem', boxShadow: `4px 4px 0 ${ink}` }}>A$</div>
-            amibroke
+            <div style={{ display: 'grid', placeItems: 'center', width: 36, height: 36, border: `3px solid ${ink}`, borderRadius: 10, background: yellow, color: bg, fontWeight: 900, fontSize: '0.72rem', boxShadow: `4px 4px 0 ${ink}`, flexShrink: 0 }}>A$</div>
+            <span className="nav-wordmark">amigmi</span>
           </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Link href="/leaderboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 34, padding: '0 14px', border: `2px solid rgba(240,236,224,0.18)`, borderRadius: 999, background: 'transparent', color: muted, fontWeight: 800, fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.05em', textDecoration: 'none' }}>
-              ★ Leaderboard
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Link href="/leaderboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 34, padding: '0 12px', border: `2px solid rgba(240,236,224,0.18)`, borderRadius: 999, background: 'transparent', color: muted, fontWeight: 800, fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.05em', textDecoration: 'none', flexShrink: 0 }}>
+              ★<span className="nav-lb-label"> Leaderboard</span>
             </Link>
             {isOwn && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, border: `2px solid rgba(240,236,224,0.18)`, borderRadius: 999, padding: '5px 12px 5px 5px', background: surface }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, border: `2px solid rgba(240,236,224,0.18)`, borderRadius: 999, padding: '5px 10px 5px 5px', background: surface, flexShrink: 0 }}>
                 <Avatar url={pub.user.avatarUrl} name={pub.user.username} size={24} />
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: ink }}>@{pub.user.username}</span>
+                <span className="nav-user-label" style={{ fontSize: '0.8rem', fontWeight: 700, color: ink }}>@{pub.user.username}</span>
               </div>
             )}
           </div>
@@ -217,12 +217,12 @@ export default function ProfilePage() {
 
       {/* ── HERO ── */}
       <section style={{ width: isMobile ? 'calc(100% - 24px)' : 'min(1180px, calc(100% - 40px))', margin: '0 auto', padding: `${isMobile ? '20px' : '44px'} 0 0` }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, marginBottom: 36, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20 }}>
-            <Avatar url={pub.user.avatarUrl} name={pub.user.username} size={80} border={`3px solid ${ink}`} shadow={`5px 5px 0 ${yellow}`} radius={20} />
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-                <h1 style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, color: ink, textTransform: 'uppercase', lineHeight: 0.95, letterSpacing: '-0.01em', margin: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 36, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: isMobile ? 14 : 20, minWidth: 0, flex: 1 }}>
+            <Avatar url={pub.user.avatarUrl} name={pub.user.username} size={isMobile ? 56 : 80} border={`3px solid ${ink}`} shadow={`5px 5px 0 ${yellow}`} radius={isMobile ? 14 : 20} />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+                <h1 style={{ fontSize: isMobile ? '1.5rem' : 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, color: ink, textTransform: 'uppercase', lineHeight: 0.95, letterSpacing: '-0.01em', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
                   @{pub.user.username}
                 </h1>
                 <a
@@ -239,16 +239,16 @@ export default function ProfilePage() {
             </div>
           </div>
           {isOwn && (
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
               <button
                 onClick={() => setShowSyncModal(true)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 18px', border: `3px solid ${ink}`, borderRadius: 14, background: cyan, color: bg, fontWeight: 900, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', boxShadow: `4px 4px 0 ${ink}`, fontFamily: 'inherit', flexShrink: 0 }}
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44, padding: '0 18px', border: `3px solid ${ink}`, borderRadius: 14, background: cyan, color: bg, fontWeight: 900, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', boxShadow: `4px 4px 0 ${ink}`, fontFamily: 'inherit', flex: isMobile ? 1 : undefined }}
               >
                 ⟳ How to sync
               </button>
               <button
                 onClick={() => setShowShare(true)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 20px', border: `3px solid ${ink}`, borderRadius: 14, background: pink, color: bg, fontWeight: 900, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', boxShadow: `4px 4px 0 ${ink}`, fontFamily: 'inherit', flexShrink: 0 }}
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44, padding: '0 20px', border: `3px solid ${ink}`, borderRadius: 14, background: pink, color: bg, fontWeight: 900, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', boxShadow: `4px 4px 0 ${ink}`, fontFamily: 'inherit', flex: isMobile ? 1 : undefined }}
               >
                 ↗ Share receipt
               </button>
@@ -327,7 +327,7 @@ export default function ProfilePage() {
                   <div style={{ background: term, border: `2px solid rgba(240,236,224,0.07)`, borderRadius: 12, padding: '10px 14px', fontFamily: 'ui-monospace, monospace', fontSize: '0.75rem', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {own.lastSyncAt
                       ? <KVRow l="last sync" r={timeAgo(own.lastSyncAt)} rColor={ink} />
-                      : <KVRow l="last sync" r="never — run bunx amibroke sync" rColor={muted} />
+                      : <KVRow l="last sync" r="never — run bunx amigmi sync" rColor={muted} />
                     }
                     {own.lastSyncedAgents.length > 0 && <KVRow l="last synced agents" r={own.lastSyncedAgents.map(a => AGENT_LBL[a] ?? a).join(', ')} rColor={cyan} />}
                   </div>
@@ -368,7 +368,7 @@ export default function ProfilePage() {
                 <div style={{ background: term, border: `2px solid rgba(240,236,224,0.08)`, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                   <span style={{ color: green, fontFamily: 'ui-monospace, monospace', fontSize: '0.74rem', fontWeight: 700, flexShrink: 0, paddingTop: 2 }}>$</span>
                   <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.76rem', fontWeight: 600, color: ink, flex: 1, wordBreak: 'break-all', lineHeight: 1.5 }}>
-                    bunx amibroke init{' '}
+                    bunx amigmi init{' '}
                     <span style={{ color: yellow }}>{storedKey ?? '<your-key>'}</span>
                   </span>
                   <TinyBtn onClick={copySetupCmd} active={setupCmdCopied}>{setupCmdCopied ? '✓' : 'Copy'}</TinyBtn>
@@ -380,8 +380,8 @@ export default function ProfilePage() {
                 <span style={{ fontSize: '0.7rem', fontWeight: 900, color: muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Step 2 — sync anytime</span>
                 <div style={{ background: term, border: `2px solid rgba(240,236,224,0.08)`, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ color: cyan, fontFamily: 'ui-monospace, monospace', fontSize: '0.74rem', fontWeight: 700, flexShrink: 0 }}>$</span>
-                  <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.76rem', fontWeight: 600, color: ink, flex: 1 }}>bunx amibroke sync</span>
-                  <TinyBtn onClick={async () => { await navigator.clipboard.writeText('bunx amibroke sync'); }}>Copy</TinyBtn>
+                  <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.76rem', fontWeight: 600, color: ink, flex: 1 }}>bunx amigmi sync</span>
+                  <TinyBtn onClick={async () => { await navigator.clipboard.writeText('bunx amigmi sync'); }}>Copy</TinyBtn>
                 </div>
                 <p style={{ fontSize: '0.72rem', color: muted, fontWeight: 600, margin: 0, lineHeight: 1.5 }}>
                   Run anytime to push your latest data — shows up on your profile and the global leaderboard.
@@ -393,11 +393,11 @@ export default function ProfilePage() {
                 <span style={{ fontSize: '0.7rem', fontWeight: 900, color: coral, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Stop tracking / uninstall</span>
                 <div style={{ background: term, border: `2px solid rgba(240,236,224,0.08)`, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ color: coral, fontFamily: 'ui-monospace, monospace', fontSize: '0.74rem', fontWeight: 700, flexShrink: 0 }}>$</span>
-                  <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.76rem', fontWeight: 600, color: ink, flex: 1, wordBreak: 'break-all' }}>rm -rf ~/.config/amibroke</span>
+                  <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.76rem', fontWeight: 600, color: ink, flex: 1, wordBreak: 'break-all' }}>rm -rf ~/.config/amigmi</span>
                   <TinyBtn onClick={copyUninstall} active={uninstallCopied}>{uninstallCopied ? '✓' : 'Copy'}</TinyBtn>
                 </div>
                 <p style={{ fontSize: '0.72rem', color: muted, fontWeight: 600, margin: 0, lineHeight: 1.5 }}>
-                  Removes local config and auth only — your account and data on amibroke.dev are unaffected.
+                  Removes local config and auth only — your account and data on amigmi.xyz are unaffected.
                 </p>
               </div>
 
@@ -490,9 +490,9 @@ function Avatar({ url, name, size, border, shadow, radius }: { url: string | nul
 }
 function StatCard({ label, value, color, sub }: { label: string; value: string; color: string; sub?: string }) {
   return (
-    <div style={{ border: `3px solid #f0ece0`, borderRadius: 18, background: '#1a1714', padding: '16px', boxShadow: `4px 4px 0 ${color}` }}>
-      <div style={{ fontSize: '0.67rem', fontWeight: 900, color: '#8c8278', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: '1.6rem', fontWeight: 900, color, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+    <div style={{ border: `3px solid #f0ece0`, borderRadius: 18, background: '#1a1714', padding: '14px', boxShadow: `4px 4px 0 ${color}`, minWidth: 0, overflow: 'hidden' }}>
+      <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#8c8278', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+      <div style={{ fontSize: 'clamp(1.2rem, 4vw, 1.6rem)', fontWeight: 900, color, lineHeight: 1, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
       {sub && <div style={{ fontSize: '0.68rem', color: '#8c8278', fontWeight: 600, marginTop: 5, fontFamily: 'ui-monospace, monospace' }}>{sub}</div>}
     </div>
   );

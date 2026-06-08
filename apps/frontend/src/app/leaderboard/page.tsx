@@ -97,13 +97,13 @@ export default function LeaderboardPage() {
   return (
     <>
       <header style={{ position: 'sticky', top: 0, zIndex: 50, background: `${bg}e0`, backdropFilter: 'blur(14px)', borderBottom: `1px solid rgba(240,236,224,0.07)` }}>
-        <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 'min(1180px, calc(100% - 40px))', margin: '0 auto', padding: '16px 0' }}>
+        <nav className="nav-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 'min(1180px, calc(100% - 40px))', margin: '0 auto', padding: '16px 0' }}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 900, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: ink, textDecoration: 'none' }}>
-            <div style={{ display: 'grid', placeItems: 'center', width: 36, height: 36, border: `3px solid ${ink}`, borderRadius: 10, background: yellow, color: bg, fontWeight: 900, fontSize: '0.72rem', boxShadow: `4px 4px 0 ${ink}` }}>A$</div>
-            amibroke
+            <div style={{ display: 'grid', placeItems: 'center', width: 36, height: 36, border: `3px solid ${ink}`, borderRadius: 10, background: yellow, color: bg, fontWeight: 900, fontSize: '0.72rem', boxShadow: `4px 4px 0 ${ink}`, flexShrink: 0 }}>A$</div>
+            <span className="nav-wordmark">amigmi</span>
           </Link>
           {me && (
-            <Link href={`/${me}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 34, padding: '0 14px', border: `2px solid rgba(240,236,224,0.18)`, borderRadius: 999, background: surface, color: muted, fontWeight: 700, fontSize: '0.78rem', textDecoration: 'none' }}>
+            <Link href={`/${me}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 34, padding: '0 12px', border: `2px solid rgba(240,236,224,0.18)`, borderRadius: 999, background: surface, color: muted, fontWeight: 700, fontSize: '0.78rem', textDecoration: 'none', flexShrink: 0 }}>
               @{me}
             </Link>
           )}
