@@ -79,7 +79,8 @@ export async function parseCodex(
         (entry as TokenCountEntry).payload?.type === 'token_count'
       ) {
         const e = entry as TokenCountEntry;
-        const u = e.payload.info.last_token_usage;
+        const u = e.payload.info?.last_token_usage;
+        if (!u) continue;
         const date = e.timestamp.slice(0, 10);
 
         const normModel = normalizeModel(currentModel);
