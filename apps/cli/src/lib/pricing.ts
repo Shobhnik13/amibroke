@@ -3,6 +3,9 @@
 // cacheWrite uses 5-minute write rate (1.25x base input)
 
 const RATES: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {
+  // Claude Fable 5 ($10 input, $50 output)
+  'claude-fable-5':    { input: 10.00, output: 50.00, cacheRead: 1.00,  cacheWrite: 12.50 },
+
   // Claude Opus 4.x ($5 input, $25 output)
   'claude-opus-4-8':   { input: 5.00,  output: 25.00, cacheRead: 0.50,  cacheWrite: 6.25  },
   'claude-opus-4-7':   { input: 5.00,  output: 25.00, cacheRead: 0.50,  cacheWrite: 6.25  },
