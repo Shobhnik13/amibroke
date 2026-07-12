@@ -1,4 +1,5 @@
 import { join } from 'path';
+import { existsSync } from 'fs';
 import { addToAgg, type AggMap } from '../lib/aggregate';
 import { calcCost, normalizeModel } from '../lib/pricing';
 
@@ -33,6 +34,9 @@ export async function parseCodex(
 ): Promise<Record<string, number>> {
   const newCursors: Record<string, number> = { ...cursors };
   const baseDir = join(process.env.HOME!, '.codex', 'sessions');
+
+  // Codex not installed — skip silently so other agents still sync
+  if (!existsSync(baseDir)) return newCursors;
 
   const glob = new Bun.Glob('**/*.jsonl');
 
@@ -84,9 +88,11 @@ export async function parseCodex(
         const date = e.timestamp.slice(0, 10);
 
         const normModel = normalizeModel(currentModel);
-        const input     = u.input_tokens ?? 0;
-        const output    = u.output_tokens ?? 0;
+        // OpenAI format: input_tokens includes cached_input_tokens, so subtract
+        // to avoid billing cached tokens twice (unlike Claude, where they're separate)
         const cacheRead = u.cached_input_tokens ?? 0;
+        const input     = Math.max(0, (u.input_tokens ?? 0) - cacheRead);
+        const output    = u.output_tokens ?? 0;
 
         addToAgg(agg, 'codex', date, normModel, {
           input,

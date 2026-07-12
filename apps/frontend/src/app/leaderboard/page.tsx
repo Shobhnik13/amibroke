@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import api from '@/lib/api';
+import api, { hasToken } from '@/lib/api';
 import { useWindowWidth } from '@/lib/use-responsive';
 
 interface LbEntry {
@@ -77,6 +77,7 @@ export default function LeaderboardPage() {
   const isMobile = w < 640;
 
   useEffect(() => {
+    if (!hasToken()) return;
     api.get<{ user: { username: string } }>('/api/auth/profile')
       .then(r => setMe(r.data.user.username))
       .catch(() => null);

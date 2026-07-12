@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import api from '@/lib/api';
+import api, { hasToken } from '@/lib/api';
 import { getFunnyLine } from '@/lib/funny';
 import { useWindowWidth } from '@/lib/use-responsive';
 
@@ -106,21 +106,24 @@ export default function ProfilePage() {
   const w = useWindowWidth();
   const isMobile = w < 640;
 
-  const isOwn = own?.user.username === username;
+  const isOwn = !!own && own.user.username.toLowerCase() === decodeURIComponent(username ?? '').toLowerCase();
 
   useEffect(() => {
     (async () => {
       try {
+        const ownReq = hasToken()
+          ? api.get<OwnProfile>('/api/auth/profile').then(async r => {
+              setOwn(r.data);
+              setShareTheme((r.data.user.publicTheme as ShareTheme) ?? 'noir');
+              if (r.data.user.apiKeyPrefix) {
+                const keyRes = await api.get<{ key: string }>('/api/auth/key').catch(() => null);
+                if (keyRes) setStoredKey(keyRes.data.key);
+              }
+            })
+          : Promise.resolve();
         const [pubRes] = await Promise.allSettled([
           api.get<PublicProfile>(`/api/leaderboard/users/${username}?period=all_time`),
-          api.get<OwnProfile>('/api/auth/profile').then(async r => {
-            setOwn(r.data);
-            setShareTheme((r.data.user.publicTheme as ShareTheme) ?? 'noir');
-            if (r.data.user.apiKeyPrefix) {
-              const keyRes = await api.get<{ key: string }>('/api/auth/key').catch(() => null);
-              if (keyRes) setStoredKey(keyRes.data.key);
-            }
-          }),
+          ownReq,
         ]);
         if (pubRes.status === 'fulfilled') {
           setPub(pubRes.value.data);

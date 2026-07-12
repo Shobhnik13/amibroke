@@ -1,4 +1,5 @@
 import { join } from 'path';
+import { existsSync } from 'fs';
 import { addToAgg, type AggMap } from '../lib/aggregate';
 import { calcCost, normalizeModel } from '../lib/pricing';
 
@@ -25,6 +26,9 @@ export async function parseClaude(
 ): Promise<Record<string, number>> {
   const newCursors: Record<string, number> = { ...cursors };
   const baseDir = join(process.env.HOME!, '.claude', 'projects');
+
+  // Claude Code not installed — skip silently so other agents still sync
+  if (!existsSync(baseDir)) return newCursors;
 
   const glob = new Bun.Glob('**/*.jsonl');
 

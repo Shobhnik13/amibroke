@@ -39,6 +39,11 @@ export default function DashboardPage() {
       }
     }
 
+    if (!localStorage.getItem('amigmi_token')) {
+      router.replace('/');
+      return;
+    }
+
     api.get<Profile>('/api/auth/profile')
       .then(res => {
         const u = res.data.user;
