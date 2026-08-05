@@ -3,8 +3,15 @@
 // cacheWrite uses 5-minute write rate (1.25x base input)
 
 const RATES: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {
-  // Claude Fable 5 ($10 input, $50 output)
+  // Claude Fable 5 / Mythos 5 ($10 input, $50 output)
   'claude-fable-5':    { input: 10.00, output: 50.00, cacheRead: 1.00,  cacheWrite: 12.50 },
+  'claude-mythos-5':   { input: 10.00, output: 50.00, cacheRead: 1.00,  cacheWrite: 12.50 },
+
+  // Claude Opus 5 ($5 input, $25 output)
+  'claude-opus-5':     { input: 5.00,  output: 25.00, cacheRead: 0.50,  cacheWrite: 6.25  },
+
+  // Claude Sonnet 5 ($3 input, $15 output; intro $2/$10 through 2026-08-31)
+  'claude-sonnet-5':   { input: 3.00,  output: 15.00, cacheRead: 0.30,  cacheWrite: 3.75  },
 
   // Claude Opus 4.x ($5 input, $25 output)
   'claude-opus-4-8':   { input: 5.00,  output: 25.00, cacheRead: 0.50,  cacheWrite: 6.25  },
@@ -33,6 +40,11 @@ const RATES: Record<string, { input: number; output: number; cacheRead: number; 
   'claude-3-opus-20240229':     { input: 15.00, output: 75.00, cacheRead: 1.50, cacheWrite: 18.75 },
 
   // OpenAI (source: developers.openai.com/api/docs/pricing)
+  // GPT-5.6 family — 1.05M context. Requests over 272K input tokens bill at 2x input / 1.5x output.
+  'gpt-5.6-sol':     { input: 5.00,  output: 30.00, cacheRead: 0.50,  cacheWrite: 0.00 },
+  'gpt-5.6-terra':   { input: 2.00,  output: 12.00, cacheRead: 0.20,  cacheWrite: 0.00 },
+  'gpt-5.6-luna':    { input: 0.20,  output: 1.20,  cacheRead: 0.02,  cacheWrite: 0.00 },
+
   'gpt-5.5':         { input: 5.00,  output: 30.00, cacheRead: 0.50,  cacheWrite: 0.00 },
   'gpt-5.5-pro':     { input: 30.00, output: 180.00, cacheRead: 0.00, cacheWrite: 0.00 },
   'gpt-5.4':         { input: 2.50,  output: 15.00, cacheRead: 0.25,  cacheWrite: 0.00 },
