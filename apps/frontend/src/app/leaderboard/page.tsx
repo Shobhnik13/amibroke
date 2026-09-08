@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import api, { hasToken } from '@/lib/api';
@@ -34,6 +34,9 @@ const LB_PERIODS: { key: Period; label: string }[] = [
 ];
 const PER_PAGE = 20;
 
+// avoids React's "useLayoutEffect does nothing on the server" warning during SSR
+const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
 function n(v: string | null | undefined): number { return parseFloat(v ?? '0') || 0; }
 function fmt(raw: string | null | undefined | number): string {
   const v = typeof raw === 'number' ? raw : n(raw as string | null);
@@ -62,8 +65,48 @@ function Avatar({ url, name, size, border }: { url: string | null; name: string;
   return <div style={{ ...st, background: yellow, display: 'grid', placeItems: 'center', fontSize: size * 0.35, fontWeight: 900, color: bg }}>{name[0].toUpperCase()}</div>;
 }
 
+// lands a row after it slides: a short vibrate + a coloured glow pulse
+function land(el: HTMLElement, color: string, strong: boolean) {
+  const base = getComputedStyle(el).boxShadow;
+  const amp = strong ? 6 : 3.5;
+  const pop = strong ? 1.035 : 1.012;
+  el.animate([
+    { transform: 'translateX(0) scale(1)' },
+    { transform: `translateX(${-amp}px) scale(${pop})` },
+    { transform: `translateX(${amp}px) scale(${pop})` },
+    { transform: `translateX(${-amp * 0.55}px) scale(1)` },
+    { transform: `translateX(${amp * 0.4}px) scale(1)` },
+    { transform: 'translateX(0) scale(1)' },
+  ], { duration: strong ? 460 : 300, easing: 'ease-out' });
+  const glow = el.animate([
+    { boxShadow: `0 0 0 0 ${color}00, ${base}` },
+    { boxShadow: `0 0 0 7px ${color}66, ${base}` },
+    { boxShadow: `0 0 0 0 ${color}00, ${base}` },
+  ], { duration: strong ? 900 : 620, easing: 'ease-out' });
+  return glow.finished;
+}
+
+function RankDelta({ delta }: { delta: number }) {
+  const up = delta > 0;
+  return (
+    <span style={{ position: 'absolute', top: -9, right: -12, display: 'inline-flex', alignItems: 'center', gap: 1, padding: '1px 5px', borderRadius: 999, border: `2px solid ${bg}`, background: up ? green : coral, color: bg, fontSize: '0.56rem', fontWeight: 900, lineHeight: 1.5, animation: 'fade-up 0.35s ease-out both', pointerEvents: 'none' }}>
+      {up ? '▲' : '▼'}{Math.abs(delta)}
+    </span>
+  );
+}
+
+function RefreshIcon({ spinning }: { spinning: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ animation: spinning ? 'spin 0.7s linear infinite' : 'none' }} aria-hidden>
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+      <path d="M21 3v6h-6" />
+    </svg>
+  );
+}
+
 const periodPill: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', minHeight: 36, padding: '0 15px', borderRadius: 999, fontWeight: 900, fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s' };
 const pagBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 36, padding: '0 14px', border: `3px solid ${ink}`, borderRadius: 12, fontWeight: 900, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'inherit' };
+const refreshBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 7, minHeight: 36, padding: '0 14px', border: `3px solid ${ink}`, borderRadius: 999, background: cyan, color: bg, fontWeight: 900, fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'inherit', boxShadow: `3px 3px 0 ${ink}`, transition: 'all 0.12s' };
 const pageNumBtn: React.CSSProperties = { width: 34, height: 34, borderRadius: 10, fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' };
 
 export default function LeaderboardPage() {
@@ -71,7 +114,15 @@ export default function LeaderboardPage() {
   const [period, setPeriod]   = useState<Period>('all_time');
   const [page, setPage]       = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [me, setMe]           = useState<string | null>(null);
+  const [deltas, setDeltas]   = useState<Record<string, number>>({});
+
+  const rowRefs   = useRef(new Map<string, HTMLAnchorElement>());
+  const prevTops  = useRef(new Map<string, number>());
+  const prevRanks = useRef(new Map<string, number>());
+  const listKey   = `${period}:${page}`;
+  const prevKey   = useRef(listKey);
 
   const w = useWindowWidth();
   const isMobile = w < 640;
@@ -83,15 +134,69 @@ export default function LeaderboardPage() {
       .catch(() => null);
   }, []);
 
-  const fetchLb = useCallback(async () => {
-    setLoading(true);
+  const fetchLb = useCallback(async (soft = false) => {
+    if (soft) setRefreshing(true); else setLoading(true);
     try {
-      const r = await api.get<LbResponse>(`/api/leaderboard?limit=${PER_PAGE}&offset=${page * PER_PAGE}&period=${period}`);
+      const req = api.get<LbResponse>(`/api/leaderboard?limit=${PER_PAGE}&offset=${page * PER_PAGE}&period=${period}`);
+      // keep the spinner up long enough to read as a refresh, not a flicker
+      const [r] = await Promise.all([req, soft ? new Promise(res => setTimeout(res, 450)) : null]);
       setLb(r.data);
-    } finally { setLoading(false); }
+    } finally { if (soft) setRefreshing(false); else setLoading(false); }
   }, [page, period]);
 
   useEffect(() => { fetchLb(); }, [fetchLb]);
+
+  // FLIP: when a refresh reshuffles the board, slide every row from where it
+  // was to where it now is, then vibrate it on landing.
+  useIsoLayoutEffect(() => {
+    if (!lb) return;
+    const tops = new Map<string, number>();
+    rowRefs.current.forEach((el, name) => tops.set(name, el.getBoundingClientRect().top + window.scrollY));
+    const ranks = new Map<string, number>();
+    lb.leaderboard.forEach((e, i) => ranks.set(e.username, page * PER_PAGE + i + 1));
+
+    const sameList = prevKey.current === listKey && prevTops.current.size > 0;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (sameList) {
+      const moved: Record<string, number> = {};
+      const oldKing = [...prevRanks.current.entries()].find(([, r]) => r === 1)?.[0];
+
+      rowRefs.current.forEach((el, name) => {
+        const from = prevTops.current.get(name);
+        const to = tops.get(name);
+        const oldRank = prevRanks.current.get(name);
+        const newRank = ranks.get(name);
+        if (oldRank != null && newRank != null && oldRank !== newRank) moved[name] = oldRank - newRank;
+        if (from == null || to == null || reduced) return;
+
+        const dy = from - to;
+        if (Math.abs(dy) < 1) return;
+        const climbed = dy > 0;
+        const color = climbed ? green : coral;
+        const crowned = climbed && newRank === 1 && oldKing != null && oldKing !== name;
+
+        // lift the travelling row above the ones it slides past
+        el.style.zIndex = climbed ? '6' : '4';
+        el.animate(
+          [{ transform: `translateY(${dy}px)` }, { transform: 'translateY(0)' }],
+          { duration: Math.min(950, 400 + Math.abs(dy) * 0.7), easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+        ).finished
+          .then(() => land(el, color, crowned))
+          .catch(() => null)
+          .finally(() => { el.style.zIndex = ''; });
+      });
+
+      if (Object.keys(moved).length) {
+        setDeltas(moved);
+        const t = setTimeout(() => setDeltas({}), 4500);
+        prevTops.current = tops; prevRanks.current = ranks; prevKey.current = listKey;
+        return () => clearTimeout(t);
+      }
+    }
+
+    prevTops.current = tops; prevRanks.current = ranks; prevKey.current = listKey;
+  }, [lb, listKey, page]);
 
   const totalPages = lb ? Math.ceil(lb.total / PER_PAGE) : 0;
 
@@ -129,12 +234,22 @@ export default function LeaderboardPage() {
             </button>
           ))}
           {lb && <span style={{ marginLeft: 'auto', fontSize: '0.74rem', fontWeight: 600, color: muted }}>{lb.total} total</span>}
+          <button
+            onClick={() => fetchLb(true)}
+            disabled={refreshing || loading}
+            title="Refresh leaderboard"
+            aria-label="Refresh leaderboard"
+            style={{ ...refreshBtn, marginLeft: lb ? 0 : 'auto', opacity: refreshing || loading ? 0.55 : 1, cursor: refreshing || loading ? 'wait' : 'pointer' }}
+          >
+            <RefreshIcon spinning={refreshing} />
+            {!isMobile && (refreshing ? 'Refreshing' : 'Refresh')}
+          </button>
         </div>
 
         {loading ? (
           <div style={{ color: muted, fontFamily: 'ui-monospace, monospace', fontSize: '0.86rem', padding: '60px 0', textAlign: 'center', fontWeight: 600 }}>Loading...</div>
         ) : lb && lb.leaderboard.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: refreshing ? 0.55 : 1, transition: 'opacity 0.15s' }}>
             {!isMobile && (
               <div style={{ display: 'grid', gridTemplateColumns: '56px minmax(0,1fr) 100px 100px 90px 100px', gap: 12, padding: '10px 18px', borderBottom: `2px solid rgba(240,236,224,0.08)` }}>
                 {['Rank', 'User', 'Input', 'Output', 'Cache', 'Cost'].map(h => (
@@ -148,8 +263,11 @@ export default function LeaderboardPage() {
               const isMe = entry.username === me;
               const cols = isMobile ? '40px minmax(0,1fr) 70px' : '56px minmax(0,1fr) 100px 100px 90px 100px';
               return (
-                <a key={entry.username} href={`/${entry.username}`} style={{ display: 'grid', gridTemplateColumns: cols, gap: isMobile ? 8 : 12, alignItems: 'center', padding: isMobile ? '10px 14px' : '12px 18px', border: `3px solid ${isMe ? yellow : ink}`, borderRadius: 18, background: isMe ? `radial-gradient(circle at 12% 50%, rgba(255,242,97,0.1), transparent 45%), ${surface}` : surface, boxShadow: isMe ? `5px 5px 0 ${yellow}` : `4px 4px 0 rgba(240,236,224,0.05)`, textDecoration: 'none' }}>
-                  <div style={{ display: 'grid', placeItems: 'center', width: isMobile ? 32 : 42, height: isMobile ? 32 : 42, border: `3px solid ${ink}`, borderRadius: 11, background: RANK_BG[(rank - 1) % RANK_BG.length], color: bg, fontWeight: 900, fontSize: isMobile ? '0.68rem' : '0.82rem', boxShadow: `3px 3px 0 ${ink}` }}>#{rank}</div>
+                <a key={entry.username} href={`/${entry.username}`} ref={el => { if (el) rowRefs.current.set(entry.username, el); else rowRefs.current.delete(entry.username); }} style={{ display: 'grid', gridTemplateColumns: cols, gap: isMobile ? 8 : 12, alignItems: 'center', padding: isMobile ? '10px 14px' : '12px 18px', border: `3px solid ${isMe ? yellow : ink}`, borderRadius: 18, background: isMe ? `radial-gradient(circle at 12% 50%, rgba(255,242,97,0.1), transparent 45%), ${surface}` : surface, boxShadow: isMe ? `5px 5px 0 ${yellow}` : `4px 4px 0 rgba(240,236,224,0.05)`, textDecoration: 'none' }}>
+                  <div style={{ position: 'relative', display: 'grid', placeItems: 'center', width: isMobile ? 32 : 42, height: isMobile ? 32 : 42, border: `3px solid ${ink}`, borderRadius: 11, background: RANK_BG[(rank - 1) % RANK_BG.length], color: bg, fontWeight: 900, fontSize: isMobile ? '0.68rem' : '0.82rem', boxShadow: `3px 3px 0 ${ink}` }}>
+                    #{rank}
+                    {deltas[entry.username] ? <RankDelta delta={deltas[entry.username]} /> : null}
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
                     <Avatar url={entry.avatarUrl} name={entry.username} size={isMobile ? 22 : 28} border={`2px solid ${isMe ? yellow : ink}`} />
                     <div style={{ minWidth: 0 }}>
